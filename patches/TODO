@@ -1,0 +1,12 @@
+
+python:all in linux? Make linux-libc-dev build with only patch in sbuild
+
+/etc/apt/sources.list
+Configuration Item: Dir::Etc::SourceList.
+/var/lib/apt/lists/
+Configuration Item: Dir::State::Lists.
+
+http://snapshot.debian.org/archive/debian/20140111T161026Z/pool/main/e/eglibc/
+eglibc_2.18-0experimental1.dsc
+
+
