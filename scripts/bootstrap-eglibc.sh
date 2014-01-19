@@ -6,6 +6,9 @@ apt-get install dpkg
 dpkg --add-architecture or1k
 
 apt-get update
+
+# TODO: do not use libgcc-4.8-dev-or1k-cross but just extract libgcc-4.8-dev:or1k instead
+# Or maybe build base?
 apt-get install -y gettext file quilt autoconf gawk debhelper \
   gcc gcc-4.8-or1k-linux-gnu libgcc-4.8-dev-or1k-cross linux-libc-dev:or1k
 
@@ -13,10 +16,16 @@ apt-get install -y gettext file quilt autoconf gawk debhelper \
 ln -sf /usr/lib/gcc-cross/or1k-linux-gnu/4.8/include-fixed /usr/lib/gcc/or1k-linux-gnu/4.8/include-fixed
 ln -sf /usr/lib/gcc-cross/or1k-linux-gnu/4.8/include /usr/lib/gcc/or1k-linux-gnu/4.8/include
 
-export DEB_BUILD_OPTIONS=nocheck
+
+# TODO: control.mk and sysdeps/or1k.mk
+# Disable stage1 in debhelpers.mk
+# TODO: remove libc6 dep
 
 apt-get source eglibc
 cd eglibc-2.18
+
+export DEB_BUILD_OPTIONS=nocheck
+# TODO: was it DEB_STAGE=stage1 instead of bootstrap?
 LINUX_SOURCE=/usr LINUX_ARCH_HEADERS=/usr/include/or1k-linux-gnu \
   DEB_BUILD_PROFILE=bootstrap dpkg-buildpackage -aor1k -d
 
