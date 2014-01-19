@@ -1,0 +1,20 @@
+
+binutils-multiarch add or1k
+build native binutils
+fix LD path to use /usr/include/or1k and /usr/lib/or1k
+
+-- gcc
+apt-get install binutils-multiarch
+force extract libc6-dev and linux-libc-dev
+
+(until binutils not fixed)
+ln -sf /usr/include/or1k /usr/or1k/include
+ln -sf /usr/lib/or1k /usr/or1k/lib
+
+--disable-multilib
+
+
+--eglibc
+two schroots (BAAD hack)
+DEB_STAGE=stage1
+
