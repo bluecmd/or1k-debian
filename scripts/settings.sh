@@ -1,6 +1,13 @@
 #!/bin/bash
 
 function setup_system() {
+  WORKDIR=/srv/build-script/${SCRIPT?}
+  echo "Changing directry to ${WORKDIR}"
+  mkdir -p ${WORKDIR}
+  cd ${WORKDIR}
+
+  rm -f *.deb
+
   sources_create
 
   apt-get update

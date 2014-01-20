@@ -12,6 +12,18 @@ diff -u gcc-4.8-4.8.2/debian/changelog gcc-4.8-4.8.2/debian/changelog
  gcc-4.8 (4.8.2-13) unstable; urgency=medium
  
    * Update to SVN 20140112 (r206564) from the gcc-4_8-branch.
+diff -u gcc-4.8-4.8.2/debian/control.m4 gcc-4.8-4.8.2/debian/control.m4
+--- gcc-4.8-4.8.2/debian/control.m4
++++ gcc-4.8-4.8.2/debian/control.m4
+@@ -130,7 +130,7 @@
+ 
+ Package: gcc`'PV-base
+ Architecture: any
+-ifdef(`MULTIARCH', `Multi-Arch: same
++ifdef(`MULTIARCH', `Multi-Arch: foreign
+ ')`'dnl
+ Section: libs
+ Priority: PRI(required)
 diff -u gcc-4.8-4.8.2/debian/rules.conf gcc-4.8-4.8.2/debian/rules.conf
 --- gcc-4.8-4.8.2/debian/rules.conf
 +++ gcc-4.8-4.8.2/debian/rules.conf

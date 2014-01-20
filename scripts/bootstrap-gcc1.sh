@@ -1,12 +1,14 @@
 #!/bin/bash
 
 set -e
+
+SCRIPT='gcc1'
 source $(dirname $0)/settings.sh
 
 setup_system
 
 sources_append 'updates'
-sources_append 'gcc1'
+sources_append 'bootstrap'
 
 upgrade_system
 
