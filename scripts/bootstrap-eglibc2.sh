@@ -1,18 +1,30 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
-apt-get install dpkg
+DIR=$(dirname $0)
+source $DIR/settings.sh
+
+sources_create
+
+apt-get update
+apt-get -y install dpkg
 dpkg --add-architecture or1k
+
+sources_append 'updates'
+sources_append 'bootstrap'
+sources_append 'gcc1'
+sources_append 'eglibc1'
+sources_append 'eglibc2'
 
 apt-get update
 apt-get install -y gettext file quilt autoconf gawk debhelper \
-  gcc gcc-4.8-or1k-linux-gnu libgcc-4.8-dev-or1k-cross linux-libc-dev:or1k
+  gcc gcc-4.8-or1k-linux-gnu linux-libc-dev:or1k
 
 # Hack since we are using libgcc-4.8-dev-or1k-cross instead of libgcc-4.8-dev:or1k
-ln -sf /usr/lib/gcc-cross/or1k-linux-gnu/4.8/include-fixed /usr/lib/gcc/or1k-linux-gnu/4.8/include-fixed
-ln -sf /usr/lib/gcc-cross/or1k-linux-gnu/4.8/include /usr/lib/gcc/or1k-linux-gnu/4.8/include
-
+#ln -sf /usr/lib/gcc-cross/or1k-linux-gnu/4.8/include-fixed /usr/lib/gcc/or1k-linux-gnu/4.8/include-fixed
+#ln -sf /usr/lib/gcc-cross/or1k-linux-gnu/4.8/include /usr/lib/gcc/or1k-linux-gnu/4.8/include
+#
 export DEB_BUILD_OPTIONS=nocheck
 
 # TODO: control.mk and sysdeps/or1k.mk
@@ -21,7 +33,6 @@ export DEB_BUILD_OPTIONS=nocheck
 
 apt-get source eglibc
 cd eglibc-2.18
-# TODO: was it DEB_STAGE=stage1 instead of bootstrap?
 LINUX_SOURCE=/usr LINUX_ARCH_HEADERS=/usr/include/or1k-linux-gnu \
   dpkg-buildpackage -aor1k -d
 

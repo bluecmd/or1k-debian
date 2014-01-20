@@ -1,19 +1,25 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
-# Warning:
-# This requires the exact same version of build native libc6
-# installed.
+DIR=$(dirname $0)
+source $DIR/settings.sh
+
+sources_create
 
 apt-get update
 apt-get -y install dpkg
 dpkg --add-architecture or1k
 
+sources_append 'updates'
+sources_append 'bootstrap'
+sources_append 'stage1'
+sources_append 'stage2'
+
 apt-get update
 apt-get -y dist-upgrade
-apt-get -o Dpkg::Options::="--force-confold" build-dep -y \
-  gcc-4.8 --no-install-recommends
+
+install_build_dep gcc-4.8
 
 apt-get install -y binutils-or1k-linux-gnu binutils-multiarch
 apt-get remove -y libc6-dev-i386
@@ -35,5 +41,5 @@ apt-get source gcc-4.8
 # TODO: add patch to --disable-multilib
 export DEB_BUILD_OPTIONS=nocheck
 (cd gcc-4.8-4.8.2 && \
-  DEB_TARGET_ARCH=or1k DEB_BUILD_PROFILE=stage2 with_gccxbase=true \
+  DEB_TARGET_ARCH=or1k DEB_BUILD_PROFILE=stage2 \
     with_deps_on_target_arch_pkgs=yes dpkg-buildpackage -b -d)
