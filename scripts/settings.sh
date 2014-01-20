@@ -1,5 +1,18 @@
 #!/bin/bash
 
+function setup_system() {
+  sources_create
+
+  apt-get update
+  apt-get -y install dpkg
+  dpkg --add-architecture or1k
+}
+
+function upgrade_system() {
+  apt-get update
+  apt-get -y dist-upgrade
+}
+
 function sources_create() {
   cat > /etc/apt/sources.list << _EOF_
 deb [arch=amd64] http://snapshot.debian.org/archive/debian/20140112T221115Z/ unstable main

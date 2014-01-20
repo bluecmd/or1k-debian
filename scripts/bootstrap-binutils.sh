@@ -1,14 +1,19 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
+source $(dirname $0)/settings.sh
 
-apt-get update
-apt-get -o Dpkg::Options::="--force-confold" \
-  build-dep -y binutils
+setup_system
 
-export DEB_BUILD_OPTIONS=nocheck
+sources_append 'updates'
+
+upgrade_system
+
+install_build_dep binutils
 
 ## source binutils
+export DEB_BUILD_OPTIONS=nocheck
 apt-get source binutils
 (cd binutils-2.24 && \
-  WITH_SYSROOT=/ TARGET=or1k-linux-gnu dpkg-buildpackage -b)
+  WITH_SYSROOT=/ \
+  TARGET=or1k-linux-gnu dpkg-buildpackage -b)
