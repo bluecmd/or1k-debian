@@ -8,15 +8,20 @@ function setup_system() {
 
   rm -f *.deb
 
+  sources_setup
+}
+
+function sources_setup() {
   sources_create
 
-  apt-get update
+  sources_append 'updates'
+  apt-get -o Acquire::Check-Valid-Until=false update
   apt-get -y install dpkg
   dpkg --add-architecture or1k
 }
 
 function upgrade_system() {
-  apt-get update
+  apt-get -o Acquire::Check-Valid-Until=false update
   apt-get -y dist-upgrade
 }
 

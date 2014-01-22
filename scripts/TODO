@@ -5,10 +5,12 @@ fix LD path to use /usr/include/or1k and /usr/lib/or1k
 
 -- gcc
 make libgcc1 libgcc-4.8-dev MA: same
+make all other things that make sense MA: same
 
+stage2:
 force extract libc6-dev and linux-libc-dev
 
-(until binutils not fixed)
+(until binutils fixed)
 ln -sf /usr/include/or1k /usr/or1k/include
 ln -sf /usr/lib/or1k /usr/or1k/lib
 
@@ -16,4 +18,10 @@ ln -sf /usr/lib/or1k /usr/or1k/lib
 --eglibc
 two schroots (BAAD hack)
 DEB_STAGE=stage1
+
+--gcc-standard
+this package is a mess, fix it
+
+--libselinux
+build with DEB_STAGE=stage1 for no python and ruby
 

@@ -64,14 +64,51 @@ diff -u gcc-4.8-4.8.2/debian/rules.defs gcc-4.8-4.8.2/debian/rules.defs
  ifdef DEB_STAGE
    with_cdev := yes
    separate_lang := yes
+@@ -604,7 +617,7 @@
+ # - To build gcc and java from separate sources:
+ #   with_separate_libgcj=yes, with_standalone_gcj=no
+ 
+-java_no_cpus := # arm64 mips mipsel
++java_no_cpus := or1k # arm64 mips mipsel
+ java_no_systems :=
+ 
+ ifneq ($(single_package),yes)
+@@ -717,7 +730,7 @@
+   with_standalone_go := yes
+ endif
+ 
+-go_no_cpus := avr arm hppa m68k sh4 sparc sparc64
++go_no_cpus := avr arm hppa m68k or1k sh4 sparc sparc64
+ ifeq (,$(filter $(distrelease),lenny etch squeeze dapper hardy jaunty karmic lucid maverick natty oneiric))
+   go_no_cpus := $(filter-out arm, $(go_no_cpus))
+ endif
+@@ -804,7 +817,7 @@
+     with_libphobos := yes
+   endif
+ 
+-  libphobos_no_cpus := alpha avr arm arm64 hppa ia64 m68k mips mipsel mips64 mips64el mipsn32 mipsn32el powerpc powerpcspe ppc64 s390 s390x sh4 sparc sparc64
++  libphobos_no_cpus := alpha avr arm arm64 hppa ia64 m68k mips mipsel mips64 mips64el mipsn32 mipsn32el or1k powerpc powerpcspe ppc64 s390 s390x sh4 sparc sparc64
+   libphobos_no_systems := gnu kfreebsd-gnu
+   ifneq (,$(findstring $(DEB_TARGET_ARCH_CPU),$(libphobos_no_cpus)))
+     with_libphobos := disabled for cpu $(DEB_TARGET_ARCH_CPU)
+@@ -877,7 +890,7 @@
+   with_objc_gc := yes
+ 
+   # disable ObjC garbage collection library (needs libgc)
+-  libgc_no_cpus := arm64 avr mips mipsel # alpha amd64 arm armel armhf hppa i386 ia64 m68k mips mipsel powerpc ppc64 s390 s390x sparc
++  libgc_no_cpus := arm64 avr mips mipsel or1k # alpha amd64 arm armel armhf hppa i386 ia64 m68k mips mipsel powerpc ppc64 s390 s390x sparc
+   libgc_no_systems := knetbsd-gnu
+   ifneq (,$(filter $(DEB_TARGET_ARCH_CPU),$(libgc_no_cpus)))
+     with_objc_gc := disabled for cpu $(DEB_TARGET_ARCH_CPU)
 diff -u gcc-4.8-4.8.2/debian/rules.patch gcc-4.8-4.8.2/debian/rules.patch
 --- gcc-4.8-4.8.2/debian/rules.patch
 +++ gcc-4.8-4.8.2/debian/rules.patch
-@@ -86,6 +86,7 @@
+@@ -86,6 +86,8 @@
  	pr57363 \
  	$(if $(with_linaro_branch),pr59588) \
  	$(if $(with_linaro_branch),pr59744) \
 +	or1k \
++	or1k-cpp \
  
  gdb_depends := $(shell dpkg -s gdb | grep '^Depends:.*libpython3')
  ifneq (,$(findstring libpython3,$(gdb_depends)))
@@ -89,6 +126,25 @@ diff -u gcc-4.8-4.8.2/debian/rules2 gcc-4.8-4.8.2/debian/rules2
  ifneq (,$(filter $(DEB_TARGET_GNU_TYPE), powerpc-linux-gnu powerpc-linux-gnuspe))
      CONFARGS += --enable-secureplt
      ifeq ($(biarch64),yes)
+only in patch2:
+unchanged:
+--- gcc-4.8-4.8.2.orig/debian/patches/or1k-cpp.diff
++++ gcc-4.8-4.8.2/debian/patches/or1k-cpp.diff
+@@ -0,0 +1,14 @@
++Index: gcc-4.8-4.8.2/src/gcc/config/or1k/or1k.h
++===================================================================
++--- gcc-4.8-4.8.2.orig/src/gcc/config/or1k/or1k.h	2014-01-21 22:48:24.129088575 +0000
+++++ gcc-4.8-4.8.2/src/gcc/config/or1k/or1k.h	2014-01-21 22:49:29.504956832 +0000
++@@ -53,8 +53,7 @@
++   while (0)
++ 
++ #undef CPP_SPEC
++-#define CPP_SPEC \
++-  "%{!mnewlib:%{pthread:-D_XOPEN_SOURCE=700}}"
+++#define CPP_SPEC "%{!mnewlib:%{posix:-D_POSIX_SOURCE} %{pthread:-D_REENTRANT}}"
++ 
++ /* Make sure we pick up the crti.o, crtbegin.o, crtend.o and crtn.o files. */
++ #undef STARTFILE_SPEC
 only in patch2:
 unchanged:
 --- gcc-4.8-4.8.2.orig/debian/patches/or1k.diff

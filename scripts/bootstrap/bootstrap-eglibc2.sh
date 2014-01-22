@@ -7,7 +7,6 @@ source $(dirname $0)/settings.sh
 
 setup_system
 
-sources_append 'updates'
 sources_append 'bootstrap'
 sources_append 'eglibc2'
 
