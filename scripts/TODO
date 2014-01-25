@@ -7,6 +7,11 @@ fix LD path to use /usr/include/or1k and /usr/lib/or1k
 make libgcc1 libgcc-4.8-dev MA: same
 make all other things that make sense MA: same
 
+for foreign:
+remove *isl*dev
+disable lto
+disable plugins
+
 stage2:
 force extract libc6-dev and linux-libc-dev
 
@@ -82,3 +87,6 @@ configure fails on scanf_cv_type_modifier
 
 --gawk
 tries to run tests
+
+--libgdbm3
+unable to install multiple times due to gdbm.info.gz
