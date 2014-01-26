@@ -1,8 +1,5 @@
---openssl
-add debian-or1k line
-fix CC= patch (patch from 2008 (!!!) already in queue, 465248)
+TODO: Track this in a wiki-page :D
 
-"debian-or1k",   "gcc:-DB_ENDIAN -DTERMIO ${debian_cflags}::-D_REENTRANT::-ldl:BN_LLONG DES_RISC1:${no_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
 
 --curl
 set libdir on crosscompile
@@ -11,12 +8,6 @@ allow to only build gnutls / openssl /nss versions
 --nspr
 broken beyond help?
 set CC to cross compile
-
---pkg-config (seems complex, multi-year conversations about it)
-MA: foreign
-
---flex
-split flex and libfl-dev like ubuntu
 
 --openssh
 I don't want krb!
@@ -27,9 +18,6 @@ http://patches.cross-lfs.org/dev/coreutils-8.22-noman-1.patch
 
 --util-linux
 configure fails on scanf_cv_type_modifier
-
---gawk
-tries to run tests
 
 --libgdbm3
 unable to install multiple times due to gdbm.info.gz
@@ -99,5 +87,20 @@ add or1k
 
 --libbsd (736759)
 add elf stuff (Used EM_OPENRISC)
+
+--openssl (736772)
+add debian-or1k line
+fix CC= patch (patch from 2008 (!!!) already in queue, 465248)
+
+"debian-or1k",   "gcc:-DB_ENDIAN -DTERMIO ${debian_cflags}::-D_REENTRANT::-ldl:BN_LLONG DES_RISC1:${no_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
+
+--pkg-config (726598)
+MA: foreign
+
+--flex (611230)
+split flex and libfl-dev like ubuntu
+
+--gawk (695162)
+tries to run tests
 
 
