@@ -1,0 +1,52 @@
+# WARNING: This is a brain dump, I might be missing stuff.
+# For a recorded installation see http://asciinema.org/a/7362
+
+# Make sure you have a deb-src line in your sources.list:
+deb-src     http://http.debian.net/debian wheezy         main
+
+# Compile qemu-or32:
+git clone https://github.com/bluecmd/or1k-qemu.git
+
+sudo apt-get build-dep qemu
+./configure --target-list=or32-linux-user --static
+make && sudo make install
+
+sudo apt-get install binfmt-support
+sudo ./scripts/qemu-binfmt-conf.sh
+
+# Debootstrap initramfs
+sudo apt-get install debootstrap
+
+sudo debootstrap --include=perl --no-check-gpg --foreign --arch or1k unstable initramfs http://commondatastorage.googleapis.com/bluecmd-openrisc/debian/
+
+sudo mkdir -p initramfs/usr/local/bin; sudo cp /usr/local/bin/qemu-or32 initramfs/usr/local/bin
+
+# It's important that you have executed qemu-binfmt-conf.sh at this point
+# This should start to configure your new Debian system. No errors should be reported.
+sudo chroot initramfs /usr/local/bin/qemu-or32  -E PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin bin/bash /debootstrap/debootstrap --second-stage 
+
+# Hacks:
+#  - Redirect console to ttyS0 (inittab)
+#  - Don't try to start swap (NOSWAP)
+#  - We don't want e2fsprogs (logsave)
+#  - Add repository (sources.list)
+# You might want to update the snapshot timestamp in sources.list if you get errors about
+# the repository having expired.
+sudo cp hacks/logsave initramfs/bin
+sudo cp hacks/inittab initramfs/etc/
+sudo cp hacks/sources.list initramfs/etc/apt
+echo "APT::Get::AllowUnauthenticated true;"| sudo tee -a initramfs/etc/apt/apt.conf.d/70debconf
+# Set a root password
+sudo chroot initramfs usr/bin/passwd
+
+# Now you can either:
+# - fire up an or1ksim instance with a kernel pointed to the initramfs directory (NFS root is a good thing)
+# - sudo chroot initramfs /bin/bash
+
+# You might want to do other things like resolv.conf and such.
+
+# NOTE: A lot of packages has been packaged in a mean way and some packages are missing
+# stuff they should contain. This is because of dependency loops that I needed to break.
+# Since the loop is now broken it should only be a matter of recompiling those packages with
+# all dependencies, but I'm more focused on upstreaming and fixing bootstrap ATM.
+
