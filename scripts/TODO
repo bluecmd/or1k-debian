@@ -1,3 +1,40 @@
+--openssl
+add debian-or1k line
+fix CC= patch (patch from 2008 (!!!) already in queue, 465248)
+
+"debian-or1k",   "gcc:-DB_ENDIAN -DTERMIO ${debian_cflags}::-D_REENTRANT::-ldl:BN_LLONG DES_RISC1:${no_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
+
+--curl
+set libdir on crosscompile
+allow to only build gnutls / openssl /nss versions
+
+--nspr
+broken beyond help?
+set CC to cross compile
+
+--pkg-config (seems complex, multi-year conversations about it)
+MA: foreign
+
+--flex
+split flex and libfl-dev like ubuntu
+
+--openssh
+I don't want krb!
+
+--coreutils
+No man pages please
+http://patches.cross-lfs.org/dev/coreutils-8.22-noman-1.patch
+
+--util-linux
+configure fails on scanf_cv_type_modifier
+
+--gawk
+tries to run tests
+
+--libgdbm3
+unable to install multiple times due to gdbm.info.gz
+
+--- LONGER TERM
 
 binutils-multiarch add or1k
 build native binutils
@@ -27,21 +64,21 @@ DEB_STAGE=stage1
 --gcc-standard
 this package is a mess, fix it
 
+-- NOTES; NO ACTION REQUIRED
 --libselinux
 build with DEB_STAGE=stage1 for no python and ruby
 
---libidn
+
+
+--- PATCHES SUBMITTED
+
+--libidn (719980)
 no_java or1k
 nocheck
 remove libidn.pdf
 
---openssl
-add debian-or1k line
-fix CC= patch
 
-"debian-or1k",   "gcc:-DB_ENDIAN -DTERMIO ${debian_cflags}::-D_REENTRANT::-ldl:BN_LLONG DES_RISC1:${no_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
-
---gnutls
+--gnutls (736750)
 patch to not use p11-kit on or1k
 don't use chrpath if we are cross compiling
 
@@ -57,36 +94,10 @@ Depends: libgnutls26 (= ${binary:Version}),
  libgcrypt11-dev (>= 1.4.0), libc6-dev | libc-dev, zlib1g-dev,
  libtasn1-3-dev (>= 2.14-0), libp11-kit-dev (>= 0.4) [!or1k], ${misc:Depends}
 
---curl
-set libdir on crosscompile
-allow to only build gnutls / openssl /nss versions
+-- dpkg (736717)
+add or1k
 
-
---nspr
-broken beyond help?
-set CC to cross compile
-
---pkg-config
-MA: foreign
-
---flex
-split flex and libfl-dev like ubuntu
-
---libbsd
+--libbsd (736759)
 add elf stuff (Used EM_OPENRISC)
 
---openssh
-I don't want krb!
 
---coreutils
-No man pages please
-http://patches.cross-lfs.org/dev/coreutils-8.22-noman-1.patch
-
---util-linux
-configure fails on scanf_cv_type_modifier
-
---gawk
-tries to run tests
-
---libgdbm3
-unable to install multiple times due to gdbm.info.gz
