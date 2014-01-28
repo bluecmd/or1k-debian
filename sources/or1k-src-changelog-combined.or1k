@@ -1,0 +1,944 @@
+==> or1k-src/cpu/ChangeLog.or1k <==
+2013-02-12  Christian Svensson  <blue@cmd.nu>
+
+	* or1k.opc (parse simm16): Add parsing for tls*(), gottp*().
+
+2012-10-24  Stefan Kristiansson <stefan.kristiansson@saunalahti.fi>
+
+	* or1k.opc (parse_disp26): New function. Parsing for plt().
+	(parse_simm16): Add parsing for got(), gotoffhi() and gotofflo().
+	* or1korbis.cpu (disp26): Use custom handler.
+
+2012-09-11  Stefan Kristiansson <stefan.kristiansson@saunalahti.fi>
+
+	fix regression on 32-bit machines
+	* or1korbis.cpu:
+	(f-disp26) implicitly use SI to cast the result of the
+	subtraction, regardless of the value of cpu:word-bitsize
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	fix some carry/overflow flag problems, fix mac problems
+	* or1korbis.cpu:
+	(l-macrc) don't use parallel
+	(l-addc) fix carry/overflow flag handling
+	(l-addci) ditto
+	(l-udiv) use udiv instead of just div
+	(l-maci) use simm16 instead of simm16-split
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	fix l.sf* instructions
+	* or1korbis.cpu:
+	(insn-opcode-setflag) NEQ -> NE
+	(l-sf*) rewrite generator pmacros, make sure sign extension
+	etc. are handled correctly
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	bug fixes for branching & exceptions
+	* or1kcommon.cpu:
+	(FORCED-CTI) new attribute, for instructions like rfe that
+	forcefully transfer control without a delay slot
+	(NOT-IN-DELAY-SLOT) moved from or1k.cpu
+	(DELAYED-CTI) moved from or1korbis.cpu
+	* or1k.cpu:
+	(NOT-IN-DELAY-SLOT) moved to or1kcommon.cpu
+	* or1korbis.cpu:
+	(spr-reg-info) add TICK TTMR SPR
+	(DELAYED-CTI) moved to or1kcommon.cpu
+	(l-rfe) add FORCED-CTI attribute, don't pass pc to helper function
+	(l-mfspr, l-mtspr) don't pass pc to helper function
+
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k.cpu, or1kcommon.cpu, or1korbis.cpu, or1kfpx.cpu: more
+	changes:
+	- set default alignment to "aligned"
+	- add nodelay (or1knd) support
+	- fix delay slot handling: since the simulator caches instructions
+	by basic blocks, when not using the delay slot, if a branch is
+	taken, we have to 1) skip the instruction in the delay slot, and
+	2) actually set the PC to the delay slot when the branch isn't taken
+	- use GPR entries in SPR array instead of their own array
+	- fix SPR enumerations, add the entries for the ones we care about
+	- fix nop handling for simulator
+	- call special C functions for mtspr/mfspr
+	- add address calculation taking LEE into account
+	- use correct opcodes for .d insns
+	- add custom insns
+	- other small things
+
+2012-04-12  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k.opc: do not include cgen/basic-{modes,ops}.h
+
+2012-04-12  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k.opc: change CGEN_DIS_HASH_SIZE to 256
+
+2012-04-12  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k.cpu, or1kcommon.cpu, or1korbis.cpu, or1korfpx.cpu: many,
+	many changes:
+	Generally get more prepared for OR64.
+	Clean up handling of different machine and features.
+	Fix handling of floating point registers.
+	Prepare for eventual use by sim/gdb.
+	Fix overflow for mul instructions.
+	Fix divide by zero handling.
+	And probably some other changes I've missed.
+
+2012-03-14  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k32.cpu -> or1kcommon.cpu
+	* or1korbis32.cpu -> or1korbis.cpu
+	* or1kor32fpx.cpu -> or1korfpx.cpu
+	  allow for 64-bit port
+
+2012-02-23  Peter Gavin  <pgavin@gmail.com>
+
+	* or1korbis32.cpu: add l.cmov and 2 needed fields
+
+2012-02-18  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k.cpu: add ORFPX32 support; add ORBIS32-MACHS/OR32FPX-MACHS
+	pmacros that will hold the list of machs with the respective isa;
+	* or1kor32fpx.cpu: new file
+	* or1k32.cpu: change the way SPRs and SPR fields are handled;
+	change the way immediates are handled; add enums for SPRs
+	* or1korbis32.cpu: change the way immediates are handled; add mac
+	instructions; add MACHS ORBIS32-MACHS to all instructions; add
+	carry/overflow handling to alu insns; make instructions generally
+	use WI instead of SI; add extb/exth insns
+	* or1k.opc: change the way immediates are handled; determine
+	whether to use hi/lo relocation at parse time
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* openrisc.cpu, openrisc.opc: deleted
+	* or1k.cpu, or1k.opc, or1k32.cpu, or1korbis32.cpu: new files
+
+==> or1k-src/newlib/ChangeLog.or1k <==
+2013-10-27  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* libc/machine/or1k/or1k-support-asm.S (or1k_interrupt_handler):
+	Change order of instructions in OR1K_DELAYED macro.
+
+2013-10-02  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* libc/machine/or1k/or1k-support-asm.S (interrupt_handler_add): Remove
+	incorrect subtraction of handler table address.
+	(interrupt_handler): Use seperate reg to hold function pointer.
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	* libc/include/machine/or1k/include/or1k-asm.h: add some comments
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	* libc/include/machine/ieeefp.h: set __IEEE_BIG_ENDIAN when
+	__or1knd__ is defined
+	* libc/include/machine/setjmp.h: set _JBLEN and _JBTYPE when
+	__or1knd__ is defined
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	* libc/machine/or1k/include/or1k-support-defs.h: new file, moved
+	NOP_* defines here from or1k-support.h so they can be used in
+	assembly files
+	* libc/machine/or1k/include/or1k-support.h: remove NOP_* defines
+
+2012-05-21  Peter Gavin  <pgavin@gmail.com>
+
+	* libc/machine/or1k/include/or1k-support.h: add NOP_EXIT_SILENT;
+	exits the simulator without reporting exit code
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* configure.host: add or1knd target
+	* libc/machine/or1k/include/or1k-asm.h: new file
+	- contains CPP macros (OR1K_DELAYED, OR1K_DELAYED_NOP) that allow
+	compilation both with and without delay slot
+	* libc/machine/or1k/longjmp.S: include or1k-asm.h, use OR1K_DELAYED*
+	* libc/machine/or1k/setjmp.S: ditto
+	* libc/machine/or1k/or1k-support-asm.S: ditto, also remove l.nop after l.rfe
+
+2012-04-12  Peter Gavin  <pgavin@gmail.com>
+
+	* configure.host: replace or16, or32 with or1k, enable or1k syscalls
+	* include/machine/ieeefp.h: add OR1K macro checks for __IEEE_BIG_ENDIAN
+	* include/machine/setjmp.h: define _JBLEN, _JBTYPE for or1k
+	* libc/machine/configure.in: add or1k target
+	* libc/machine/or1k/configure: new file, taken from existing or1k newlib port
+	* libc/machine/or1k/aclocal.m4: ditto
+	* libc/machine/or1k/Makefile.am: ditto
+	* libc/machine/or1k/include/spr-defs.h: ditto
+	* libc/machine/or1k/include/or1k-support.h: ditto
+	* libc/machine/or1k/or1k-support.c: ditto
+	* libc/machine/or1k/setjmp.S: ditto
+	* libc/machine/or1k/or1k-support-asm.S: ditto
+	* libc/machine/or1k/longjmp.S: ditto
+	* libc/machine/or1k/Makefile.in: ditto
+	* libc/machine/or1k/configure.in: ditto
+
+==> or1k-src/include/ChangeLog.or1k <==
+2013-02-12  Christian Svensson  <blue@cmd.nu>
+
+	* elf/or1k.h (START_RELOC_NUMBERS): Add R_OR1K_TLS_GD_HI16,
+	R_OR1K_TLS_GD_LO16, R_OR1K_TLS_LDM_HI16, R_OR1K_TLS_LDM_HI16,
+	R_OR1K_TLS_LDM_LO16, R_OR1K_TLS_LDO_HI16, R_OR1K_TLS_LDO_LO16,
+	R_OR1K_TLS_IE_HI16, R_OR1K_TLS_IE_LO16, R_OR1K_TLS_LE_HI16,
+	R_OR1K_TLS_LE_LO16, R_OR1K_TLS_TPOFF, R_OR1K_TLS_DTPOFF,
+	R_OR1K_TLS_DTPMOD.
+
+2012-10-24  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* elf/or1k.h (START_RELOC_NUMBERS): Add R_OR1K_GOTPC_HI16,
+	R_OR1K_GOTPC_LO16, R_OR1K_GOT16, R_OR1K_PLT26, R_OR1K_GOTOFF_HI16,
+	R_OR1K_GOTOFF_LO16, R_OR1K_COPY, R_OR1K_GLOB_DAT, R_OR1K_JMP_SLOT and
+	R_OR1K_RELATIVE.
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* elf/or1k.h: add EF_OR1K_NODELAY flag
+
+2012-02-18  Peter Gavin  <pgavin@gmail.com>
+
+	* elf/or1k.h: reorder relocs to maintain binary compatibility; add
+	32/16/8-bit pc-relative relocs
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+
+	* dis-asm.h: s/openrisc/or1k/ s/or32/or1k/
+        * elf/common.h: ditto
+        * elf/or1k.h: new file
+
+==> or1k-src/sim/ChangeLog.or1k <==
+2013-10-03  Franck Jullien  <franck.jullien@gmail.com>
+
+	* or1ksim/wrapper.c (sim_complete_command): Make char arguments const.
+
+2013-01-30  Franck Jullien  <franck.jullien@gmail.com>
+
+	* configure.ac : add choice between or1ksim or CGEN sim
+	* configure : Regenerate.
+	* or1ksim/aclocal.m4: new file
+	* or1ksim/ChangeLog: new file
+	* or1ksim/config.in: new file
+	* or1ksim/configure: new file
+	* or1ksim/configure.ac: new file
+	* or1ksim/Makefile.in: new file
+	* or1ksim/or32sim.h: new file
+	* or1ksim/README: new file
+	* or1ksim/tconfig.in: new file
+	* or1ksim/wrapper.c: new file
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	* configure.tgt: fix typo keeping testsuite from running
+	* configure: regenerate
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* configure.tgt: add or1k target
+	* configure: regenerate
+	* or1k/Makefile.in: new file
+	* or1k/aclocal.m4: new file
+	* or1k/arch.h: new file
+	* or1k/arch32.c: new file
+	* or1k/arch32.h: new file
+	* or1k/arch64.c: new file
+	* or1k/arch64.h: new file
+	* or1k/config.in: new file
+	* or1k/configure: new file
+	* or1k/configure.ac: new file
+	* or1k/cpu.h: new file
+	* or1k/cpu32.c: new file
+	* or1k/cpu32.h: new file
+	* or1k/cpu64.c: new file
+	* or1k/cpu64.h: new file
+	* or1k/cpuall.h: new file
+	* or1k/cpuall32.h: new file
+	* or1k/cpuall64.h: new file
+	* or1k/decode.h: new file
+	* or1k/decode32.c: new file
+	* or1k/decode32.h: new file
+	* or1k/decode64.c: new file
+	* or1k/decode64.h: new file
+	* or1k/eng.h: new file
+	* or1k/mloop.in: new file
+	* or1k/model32.c: new file
+	* or1k/model64.c: new file
+	* or1k/or1k-sim.h: new file
+	* or1k/or1k.c: new file
+	* or1k/or1k.h: new file
+	* or1k/or1k32-opc.h: new file
+	* or1k/or1k64-opc.h: new file
+	* or1k/sem32-switch.c: new file
+	* or1k/sem32.c: new file
+	* or1k/sem64-switch.c: new file
+	* or1k/sem64.c: new file
+	* or1k/sim-if.c: new file
+	* or1k/sim-main.h: new file
+	* or1k/tconfig.in: new file
+	* or1k/traps-linux.c: new file
+	* or1k/traps.c: new file
+
+==> or1k-src/sim/testsuite/ChangeLog.or1k <==
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	* add testsuite for or1k
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	* configure: regenerated
+
+
+==> or1k-src/sim/common/ChangeLog.or1k <==
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* Make-common.in: pass $(SUFFIX) to cgen.sh in cgen-arch target
+	* cgen.sh: append suffix to names of arch.[ch] and cpuall.h
+
+2012-03-14  Peter Gavin  <pgavin@gmail.com>
+
+	* add mul-o1flag (1's complement unsigned multiply overflow flag)
+	and mul-o2flag (2's complement signed multiply overflow flag)
+	* cgen-ops.h:
+	(MUL1OFSI) new function: 1's complement
+	(MUL2OFSI) new function: 2's complement
+
+2012-03-14  Peter Gavin  <pgavin@gmail.com>
+
+	* cgen-accfp.c: add rem (remainder) function (needed for OR1K lf.rem.[sd])
+	(remsf) new function
+	(remdf) ditto
+	(struct cgen_fp_ops) add fields for rem[sdxt]f functions
+
+==> or1k-src/ChangeLog.or1k <==
+2013-01-30  Franck Jullien  <elec4fun@gmail.com>
+
+	* configure.ac : add choice between or1ksim or CGEN sim
+	* configure    : Regenerate.
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* config.guess, config.sub: add or1knd target
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* config.guess, config.sub: s/or32/or1k/ s/openrisc/or1k/
+
+==> or1k-src/cgen/ChangeLog.or1k <==
+2012-04-12  Peter Gavin  <pgavin@gmail.com>
+
+	* sim-arch.scm: define WI, UWI, AI, & IAI using mode:c-type
+
+2012-03-14  Peter Gavin  <pgavin@gmail.com>
+
+	* add mul-o1flag (1's complement unsigned multiply overflow flag)
+	and mul-o2flag (2's complement signed multiply overflow flag)
+	* rtl-c.scm:
+	(mul-o1flag) new define-fn
+	(mul-o2flag) ditto
+	* rtx-funcs.scm:
+	(mul-o1flag) new drn
+	(mul-o2flag) ditto
+
+2012-03-14  Peter Gavin  <pgavin@gmail.com>
+
+	* rtl-c.scm: add rem (remainder) function (needed for OR1K lf.rem.[sd])
+	* rtx-funcs.scm: ditto
+
+
+==> or1k-src/opcodes/ChangeLog.or1k <==
+2013-02-12  Christian Svensson  <blue@cmd.nu>
+
+	* or1k-asm.c: Regenerate
+
+2012-10-24  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* or1k-asm.c: Regenerate.
+	* or1k-desc.c: Likewise.
+	* or1k-desc.h: Likewise.
+
+2012-09-12  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* or1k-ibld.c: regenerate
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k-desc.h: ditto
+	* or1k-desc.c: ditto
+	* or1k-opc.h: ditto
+	* or1k-opc.c: ditto
+	* or1k-opinst.c: ditto
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k-asm.c: regenerate
+	* or1k-desc.h: ditto
+	* or1k-desc.c: ditto
+	* or1k-dis.c: ditto
+	* or1k-opc.h: ditto
+	* or1k-opc.c: ditto
+	* or1k-opinst.c: ditto
+
+2012-04-12  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k-opinst.c: new file
+	* or1k-asm.c: regenerate
+	* or1k-desc.c: regenerate
+	* or1k-desc.h: regenerate
+	* or1k-dis.c: regenerate
+	* or1k-ibld.c: regenerate
+	* or1k-opc.c: regenerate
+	* or1k-opc.h: regenerate
+
+2012-04-12  Peter Gavin  <pgavin@gmail.com>
+
+	* Makefile.am: build or1k-opinst.c
+
+2012-03-14  Peter Gavin  <pgavin@gmail.com>
+
+	* Makefile.am: stamp-or1k: rename
+	  or1k32.cpu -> or1kcommon.cpu,
+	  or1korbis32.cpu -> or1korbis.cpu,
+	  or1kor32fpx.cpu -> or1korfpx.cpu
+	  allow for 64-bit port
+
+2012-02-23  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k-asm.c: regenerate
+	* or1k-desc.c: regenerate
+	* or1k-desc.h: regenerate
+	* or1k-opc.c: regenerate
+	* or1k-opc.h: regenerate
+
+2012-02-18  Peter Gavin  <pgavin@gmail.com>
+
+	* Makefile.am: add dependencies to stamp-or1k for all cpu files
+	* or1k-asm.c, or1k-desc.c, or1k-desc.h, or1k-dis.c, or1k-ibld.c,
+	or1k-opc.c, or1k-opc.h: regenerated
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* openrisc-asm.c: deleted
+	* openrisc-desc.c: deleted
+	* openrisc-desc.h: deleted
+	* openrisc-dis.c: deleted
+	* openrisc-ibld.c: deleted
+	* openrisc-opc.c: deleted
+	* openrisc-opc.h: deleted
+	* or32-dis.c: deleted
+	* or32-opc.c: deleted
+	* or1k-asm.c: new file, generated with cgen
+	* or1k-desc.c: ditto
+	* or1k-desc.h: ditto
+	* or1k-dis.c: ditto
+	* or1k-ibld.c: ditto
+	* or1k-opc.c: ditto
+	* or1k-opc.h: ditto
+	* Makefile.am: remove old openrisc stuff, replace with or1k
+	* configure.in: ditto
+	* disassemble.c: ditto
+
+==> or1k-src/gas/ChangeLog.or1k <==
+2013-02-12  Christian Svensson  <blue@cmd.nu>
+
+	* config/tc-or1k.c (or1k_apply_fix): Mark TLS related symbols as TLS.
+	* tc-or1k.h: Hook for or1k_apply_fix.
+
+2013-01-22  Christian Svensson  <blue@cmd.nu>
+
+	* config/tc-or1k.h:
+	(tc_cfi_frame_initial_instructions) define.
+	(or1k_cfi_frame_initial_instructions) prototype (body in tc-or1k.c)
+	* config/tc-or1k.c:
+	(or1k_cfi_frame_initial_instructions) set SP as the default CFA reg.
+
+2012-12-29  Christian Svensson  <blue@cmd.nu>
+
+	* config/tc-or1k.h (TARGET_USE_CFIPOP): Enable CFI.
+	(DWARF2_CIE_DATA_ALIGNMENT, DWARF2_DEFAULT_RETURN_COLUMN,
+	DWARF2_LINE_MIN_INSN_LENGTH): Define.
+
+2012-10-24  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* config/tc-or1k.c (tc_gen_reloc): New function. Handle
+	BFD_RELOC_OR1K_GOTPC_HI16 and BFD_RELOC_OR1K_GOTPC_LO16 relocations
+	to _GLOBAL_OFFSET_TABLE_
+	* config/tc-or1k.h (tc_gen_reloc): Remove define.
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* config/tc-or1k.h:
+	(or1k_elf_final_processing) add prototype
+	(elf_tc_final_processing) define
+	* config/tc-or1k.c: add nodelay
+	(s_nodelay) new function, handle ".nodelay" directive
+	(or1k_elf_final_processing) new function, set EF_OR1K_NODELAY flag
+	in binaries when assembly file uses ".nodelay" directive
+	* configure.tgt: add or1knd target
+	* configure.ac: use or1k as cgen cpu type when target is or1knd
+	* configure: regenerate
+
+2012-02-23  Peter Gavin  <pgavin@gmail.com>
+
+	* config/tc-or1k.c: handle .align pseudo with s_align_bytes
+	instead of default (s_align_pow2)
+
+2012-02-23  Peter Gavin  <pgavin@gmail.com>
+
+	* configure.tgt: remote or1k-*-rtems*, add or1k-*-linux*, add
+	endian=big, make bfd_gas=yes for or1k
+
+2012-02-18  Peter Gavin  <pgavin@gmail.com>
+
+	* config/tc-or1k: fix md_relax_table;
+	md_estimate_size_before_relax: no relaxations change the size of
+	code, so just return rlx_length; fix md_pcrel_from_section;
+	md_cgen_lookup_reloc: use the reloc determined at parse time if it
+	exists, otherwise use the cgen operand type;
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* Makefile.am, configure.in, configure.tgt: s/openrisc/or1k/ s/or32/or1k/
+	* doc/as.texinfo: ditto
+        * config/obj-coff.h: remove or32-coff support
+        * config/tc-openrisc.c, config/tc-openrisc.h: deleted
+	* config/tc-or32.c, config/tc-or32.h: ditto
+	* config/tc-or1k.c, config/tc-or1k.h: new files
+
+==> or1k-src/gas/testsuite/ChangeLog.or1k <==
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	* gas/or1k/allinsn.d, gas/or1k/allinsn.s: add tests for l.mac and l.maci
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	* gas/or1k/allinsn.d: fix immediates in l.sf* instructions
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* gas/elf/warn-2.s: use or1k* instead of or1k to catch or1knd target
+
+2012-02-18  Peter Gavin  <pgavin@gmail.com>
+
+	* gas/testsuite/gas/or1k/allinsn.s: add testcase for 65536 as
+          an immediate
+	* gas/testsuite/gas/or1k/allinsn.d: fix to match actual output
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* gas/all/gas.exp: openrisc passes the test now
+	* gas/elf/warn-2.exp: s/openrisc/or1k/ s/or32/or1k/
+	* gas/lns/lns-common-1-or1k.s: new file because or1k has different nop opcode
+	* gas/lns/lns.exp: use lns-common-1-or1k.s when doing or1k
+	* gas/testsuite/gas/openrisc/*: deleted
+	* gas/testsuite/gas/or1k/allinsn.d: new file
+	* gas/testsuite/gas/or1k/allinsn.s: ditto
+	* gas/testsuite/gas/or1k/allinsn.exp: ditto
+
+==> or1k-src/ld/ChangeLog.or1k <==
+2013-02-12  Christian Svensson  <blue@cmd.nu>
+
+	* ld/emulparams/elf32or1k_linux.sh (GENERATE_COMBRELOC_SCRIPT): Define
+	to yes.
+	* ld/scripttempl/or1k.sc: Delete unused file.
+
+2012-12-20  Christian Svensson  <blue@cmd.nu>
+
+	* ld/emulparams/elf32or1k.sh (COMMONPAGESIZE): Define (to fix ld -z
+	relro support).
+
+2012-10-24  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* emulparams/elf32or1k_linux.sh: New file.
+	* Makefile.am (ALL_EMULATION_SOURCES): Add eelf32or1k_linux.c
+	(eelf32or1k_linux.c): New rule.
+	* Makefile.in: Regenerate.
+	* configure.tgt: Use elf32or1k_linux for or1k(nd)-*-linux.
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* configure.tgt: add or1knd targets
+
+2012-02-23  Peter Gavin  <pgavin@gmail.com>
+
+	* configure.tgt: add or1k-*-linux
+
+2012-02-18  Peter Gavin  <pgavin@gmail.com>
+
+	* emulparams/elf32or1k.sh: use RELA relocs; add NOP value
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* configure.tgt: s/openrisc/or1k/ s/or32/or1l/
+	* Makefile.am: ditto
+	* emulparams/elf32openrisc.sh: deleted
+	* emulparams/or32.sh: deleted
+	* emulparams/or32elf.sh: deleted
+	* emulparams/elf32or1k.sh: new file
+	* scripttempl/or32.sc -> scripttempl/or1k.sc
+
+==> or1k-src/ld/testsuite/ChangeLog.or1k <==
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* ld-elf/sec64k.exp, ld-lib.exp: match against or1k* instead of
+	just or1k to catch or1knd target
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* testsuite/ld-discard/extern.d: remove or32 from xfail, or1k now
+	passes this test anyway
+	* testsuite/ld-discard/start.d: ditto
+	* testsuite/ld-discard/static.d: ditto
+	* testsuite/ld-elf/group1.d: ditto
+	* testsuite/ld-elf/group3b.d: ditto
+	* testsuite/ld-elf/group8a.d: ditto
+	* testsuite/ld-elf/group8b.d: ditto
+	* testsuite/ld-elf/group9a.d: ditto
+	* testsuite/ld-elf/group9b.d: ditto
+	* testsuite/ld-elf/linkonce2.d: ditto
+	* testsuite/ld-elf/merge.d: ditto
+	* testsuite/ld-elf/merge2.d: ditto
+	* testsuite/ld-elf/orphan-region.d: ditto
+	* testsuite/ld-elf/orphan.d: ditto
+	* testsuite/ld-elf/orphan3.d: ditto
+	* testsuite/ld-elf/pr12851.d: ditto
+	* testsuite/ld-elf/pr12975.d: ditto
+	* testsuite/ld-elf/pr13177.d: ditto
+	* testsuite/ld-elf/pr13195.d: ditto
+	* testsuite/ld-elf/pr349.d: ditto
+	* testsuite/ld-elf/sec64k.d: ditto
+	* testsuite/ld-elf/warn1.d: ditto
+	* testsuite/ld-elf/warn2.d: ditto
+	* testsuite/ld-elf/warn3.d: ditto
+	* testsuite/ld-elf/weak.d: ditto
+	* testsuite/lib/ld-lib.exp: s/openrisc/or1k/ s/or32/or1k/, remove
+	exclusion of or32 from check_gc_sections_available
+
+==> or1k-src/binutils/ChangeLog.or1k <==
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* readelf.c: (get_machine_flags) output "nodelay" for
+	EF_OR1K_NODELAY binaries
+
+2012-02-18  Peter Gavin  <pgavin@gmail.com>
+
+	* readelf.c: is_32bit_pcrel_reloc, is_16bit_abs_reloc, is_none_reloc: fix to
+	match the actual or1k relocs
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* readelf.c: s/openrisc/or1k/ s/or32/or1k/
+
+
+==> or1k-src/binutils/testsuite/ChangeLog.or1k <==
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* binutils-all/objdump.exp: (cpus_expected) add or1k
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* binutils-all/dw2-decodedline-1.S: new file, copied from
+          dw2-decodedline.S because or1k has a different nop opcode
+	* binutils-all/objcopy.exp: don't skip openrisc/or32
+	* binutils-all/objcopy.exp: don't skip openrisc/or32, also use
+	dw2-decodedline-1.S when checking for or1k
+
+==> or1k-src/gdb/ChangeLog.or1k <==
+2013-10-01  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* or1k-tdep.c (or1k_fetch_instruction): Change char to gdb_byte to
+	prevent pointer signedness error.
+	(or1k_push_dummy_code): Likewise.
+
+2013-03-15  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* or1k-tdep.c (or1k_regset_from_core_section) : Silence gcc warning
+	by using %z format for size_t.
+
+2013-02-21  Franck Jullien  <franck.jullien@gmail.com>
+
+	* or1k-tdep.c (or1k_push_dummy_code) : Use or1k_frame_align to
+	align the stack pointer.
+
+2013-02-16  Franck Jullien  <franck.jullien@gmail.com>
+
+	* or1k-tdep.c : Add target description file support. Tested
+	with xml received from the remote. Embedded xml descriptor file
+	is not implemented.
+
+2013-02-16  Franck Jullien  <franck.jullien@gmail.com>
+
+	* or1k-tdep.h : Include SPR registers in GDB registers list.
+	* or1k-tdep.c : Make adjustments regarding registers definition
+	changes.
+
+2013-02-16  Franck Jullien  <franck.jullien@gmail.com>
+
+	* target-descriptor.c (tdesc_register_in_reggroup_p): Allow
+	usage of arbitrary groups.
+
+2013-02-16  Franck Jullien  <franck.jullien@gmail.com>
+
+	* target-descriptor.h (tdesc_find_register_name): Declare.
+	(tdesc_find_register_group_name): Declare.
+	* target-descriptor.c (tdesc_find_register_name): New function.
+	(tdesc_find_register_group_name): New function.
+
+2013-02-13  Franck Jullien  <franck.jullien@gmail.com>
+
+	* or1k-tdep.c (or1k_push_dummy_code): New function.
+	(or1k_gdbarch_init): Override default behavior and call dummy
+	from the stack. Set the push_dummy_code handler to or1k_push_dummy_code.
+
+2013-02-12  Franck Jullien  <franck.jullien@gmail.com>
+
+	* or1k-tdep.c (or1k_skip_prologue): Add a check for NULL
+	pointer while comparing debugformat to "dwarf".
+
+2013-01-30  Franck Jullien  <franck.jullien@gmail.com>
+
+	* configure.ac : add choice between or1ksim or CGEN sim
+	* configure    : Regenerate.
+
+2013-01-30  Franck Jullien  <franck.jullien@gmail.com>
+
+	* or1k-tdesc.c  : Add file for or1k support
+	* or1k-tdesc.h  : Add file for or1k support
+	* configure.tgt : Add or1k targets
+	* gdb.texinfo   : Add OpenRISC documentation
+
+==> or1k-src/bfd/ChangeLog.or1k <==
+2013-10-01  Stefan Kristiansson <stefan.kristiansson@saunalahti.fi>
+
+	* elf32-or1k.c (or1k_elf_reloc_type_class): Add extra params functions.
+	(or1k_elf_link_hash_table_create): Use bfd_zmalloc.
+
+2013-02-12  Christian Svensson  <blue@cmd.nu>
+
+	* reloc.c: Add R_OR1K_TLS_GD_HI16,
+	R_OR1K_TLS_GD_LO16, R_OR1K_TLS_LDM_HI16, R_OR1K_TLS_LDM_HI16,
+	R_OR1K_TLS_LDM_LO16, R_OR1K_TLS_LDO_HI16, R_OR1K_TLS_LDO_LO16,
+	R_OR1K_TLS_IE_HI16, R_OR1K_TLS_IE_LO16, R_OR1K_TLS_LE_HI16,
+	R_OR1K_TLS_LE_LO16, R_OR1K_TLS_TPOFF, R_OR1K_TLS_DTPOFF,
+	R_OR1K_TLS_DTPMOD.
+	* elf32-or1k.c (or1k_elf_howto_table): Add R_OR1K_TLS_GD_HI16,
+	R_OR1K_TLS_GD_LO16, R_OR1K_TLS_LDM_HI16, R_OR1K_TLS_LDM_HI16,
+	R_OR1K_TLS_LDM_LO16, R_OR1K_TLS_LDO_HI16, R_OR1K_TLS_LDO_LO16,
+	R_OR1K_TLS_IE_HI16, R_OR1K_TLS_IE_LO16, R_OR1K_TLS_LE_HI16,
+	R_OR1K_TLS_LE_LO16.
+	(or1k_reloc_map): Likewise.
+	(TLS_*): Defined TLS type macros.
+	(elf_or1k_link_hash_entry): Added tls_type.
+	(elf_or1k_obj_tdata): New.
+	(elf_or1k_tdata): New.
+	(elf_or1k_local_tls_type): New.
+	(elf_or1k_mkobject): New.
+	(or1k_elf_link_hash_newfunc): Set default TLS type to UNKNOWN.
+	(tpoff): New.
+	(or1k_elf_relocate_section): Relocation logic for TLS.
+	(or1k_elf_check_relocs): Likewise.
+	(or1k_elf_check_relocs): Fixed combreloc bug by using
+	_bfd_elf_make_dynamic_reloc_section instead of bfd_make_section.
+	(or1k_elf_finish_dynamic_symbol): Do not handle TLS symbols.
+	(allocate_dynrelocs): Handle TLS types which needs more GOT / reloc
+	space.
+	(or1k_elf_size_dynamic_sections): Likewise.
+	* bfd-in2.h: Regenerate.
+	* libbfd.h: Likewise.
+
+2012-10-24  Stefan Kristiansson <stefan.kristiansson@saunalahti.fi>
+
+	* elf-bfd.h (elf_target_id): Add OR1K_ELF_DATA.
+	* elf32-or1k.c (or1k_elf_howto_table): Add R_OR1K_GOTPC_HI16,
+	R_OR1K_GOTPC_LO16, R_OR1K_GOT16, R_OR1K_PLT26, R_OR1K_GOTOFF_HI16,
+	R_OR1K_GOTOFF_LO16, R_OR1K_COPY, R_OR1K_GLOB_DAT, R_OR1K_JMP_SLOT and
+	R_OR1K_RELATIVE.
+	(or1k_reloc_map): Add BFD_RELOC_OR1K_GOTPC_HI16,
+	BFD_RELOC_OR1K_GOTPC_LO16, BFD_RELOC_OR1K_GOT16,
+	BFD_RELOC_OR1K_PLT26, BFD_RELOC_OR1K_GOTOFF_HI16,
+	BFD_RELOC_OR1K_GOTOFF_LO16, BFD_RELOC_OR1K_GLOB_DAT,
+	BFD_RELOC_OR1K_COPY, BFD_RELOC_OR1K_JMP_SLOT and
+	BFD_RELOC_OR1K_RELATIVE.
+	(struct elf_or1k_dyn_relocs): New declaration.
+	(struct elf_or1k_link_hash_entry): Likewise.
+	(struct elf_or1k_link_hash_table): Likewise.
+	(or1k_elf_link_hash_newfunc): New function.
+	(or1k_elf_link_hash_table_create): Likewise.
+	(or1k_elf_gc_sweep_hook): Likewise.
+	(create_got_section): Likewise.
+	(or1k_elf_finish_dynamic_sections): Likewise.
+	(or1k_elf_finish_dynamic_symbol): Likewise.
+	(or1k_elf_reloc_type_class): Likewise.
+	(or1k_elf_adjust_dynamic_symbol): Likewise.
+	(allocate_dynrelocs): Likewise.
+	(readonly_dynrelocs): Likewise.
+	(or1k_elf_size_dynamic_sections): Likewise.
+	(or1k_elf_create_dynamic_sections): Likewise.
+	(or1k_reloc_type_lookup): Add handling for R_OR1K_PLT26,
+	R_OR1K_GOT16, R_OR1K_GOTOFF_LO16, R_OR1K_GOTOFF_HI16,
+	R_OR1K_INSN_REL_26, R_OR1K_HI_16_IN_INSN, R_OR1K_LO_16_IN_INSN and
+	R_OR1K_32.
+	(or1k_elf_check_relocs): Likewise.
+	* reloc.c (BFD_RELOC_OR1K_GOTPC_HI16): New relocation.
+	(BFD_RELOC_OR1K_GOTPC_LO16): Likewise.
+	(BFD_RELOC_OR1K_GOT16): Likewise.
+	(BFD_RELOC_OR1K_PLT26): Likewise.
+	(BFD_RELOC_OR1K_GOTOFF_HI16): Likewise.
+	(BFD_RELOC_OR1K_GOTOFF_LO16): Likewise.
+	(BFD_RELOC_OR1K_COPY): Likewise.
+	(BFD_RELOC_OR1K_GLOB_DAT): Likewise.
+	(BFD_RELOC_OR1K_JMP_SLOT): Likewise.
+	(BFD_RELOC_OR1K_RELATIVE): Likewise.
+	* bfd-in2.h: regenerate
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* config.bfd: add or1knd target
+	* archures.c: add bfd_mach_or1k and bfd_mach_or1knd entries
+	* cpu-or1k.c: add bfd_or1knd_arch, make bfd_or1k_arch use bfd_mach_or1k
+	* elf32-or1k.c: add or1knd support
+	(or1k_elf_object_p) set mach to bfd_mach_or1knd when
+	EF_OR1K_NODELAY is set in elf file
+	(or1k_elf_final_write_processing) set output EF_OR1K_NODELAY flag
+	when arch is or1knd
+	(or1k_elf_set_private_flags) new function
+	(elf32_or1k_merge_private_bfd_data) new function; make sure
+	EF_OR1K_NODELAY flag is consistent on all objects; initialize
+	output flags
+	* bfd-in2.h: regenerate
+
+2012-02-23  Peter Gavin  <pgavin@gmail.com>
+
+	* config.bfd: remove openrisc-*-elf, add or1k-*-linux
+
+2012-02-18  Peter Gavin  <pgavin@gmail.com>
+
+	* elf32-or1k.c: fix howtos, make it binary compatible again;
+	remove or1k_final_link_relocate (I'm pretty sure it's not needed);
+	make things more consistent with other ports; change
+	ELF_MAXPAGESIZE to 8K (that what the hardware actually uses)
+	* reloc.c: remove BFD_RELOC_OR1K_ABS_26 (it's not used);
+	guess_is_rela: this or1k port uses rela, so change it
+
+2012-02-13  Peter Gavin  <pgavin@gmail.com>
+
+	* coff-or32.c, cpu-openrisc.c, cpu-or32.c: deleted
+	* elf32-openrisc.c, elf32-or32.c: ditto
+	* Makefile.am: s/openrisc/or1k/ s/or32/or1k/, remove coff-or32 support
+	* archures.c: ditto
+	* config.bfd: ditto
+	* configure.in: ditto
+	* coffcode.h: ditto
+	* reloc.c: ditto
+	* targets.c: ditto
+
+==> or1k-src/libgloss/ChangeLog.or1k <==
+2013-07-10  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* or1k/crt0.S: Rename __init/__fini to _init/_fini
+
+2012-10-02  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* or1k/Makefile.in: add atlys and de0_nano to BOARDS
+	* or1k/atlys.S: new file
+	* or1k/de0_nano.S: ditto
+
+2012-10-02  Stefan Kristiansson  <stefan.kristiansson@saunalahti.fi>
+
+	* or1k/ml501.S: make board globals weak
+	* or1k/or1ksim-uart.S: ditto
+	* or1k/or1ksim.S: ditto
+	* or1k/ordb1a3pe1500.S: ditto
+	* or1k/ordb2a.S: ditto
+	* or1k/orpsocrefdesign.S: ditto
+
+2012-06-22  Peter Gavin  <pgavin@gmail.com>
+
+	make each board use its own exit routine
+	* or1k/_exit.c: replace use of NOP_EXIT_SILENT with jump to _board_exit
+	* or1k/ml501.S: implement _board_exit
+	* or1k/or1ksim-uart.S: ditto
+	* or1k/or1ksim.S: ditto
+	* or1k/ordb1a3pe1500.S: ditto
+	* or1k/ordb2a.S: ditto
+	* or1k/orpsocrefdesign.S: ditto
+
+2012-05-21  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k/_exit.c: use NOP_EXIT_SILENT as l.nop code instead of
+	NOP_EXIT
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k/configure.in: remove unneeded cruft
+	* or1k/configure: regenerate
+	* or1k/config.h.in: ditto
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* or1k/Makefile.in: use libboard-${board}.a instead of
+	${board}/libboard.a.  GCC has a problem finding them when
+	multilibs are used if they're in a subdirectory.
+
+2012-05-13  Peter Gavin  <pgavin@gmail.com>
+
+	* configure.in: add or1knd target
+	* configure: regenerate
+	* or1k/crt0.s: include or1k-asm.h from newlib, use OR1K_DELAYED*
+	to make delay slot agnostic
+	* or1k/ml501.S: also include or1k-asm.h from newlib, even though
+	we don't use OR1K_DELAYED* here, because it conditionally emits
+	the ".nodelay" directive
+	* or1k/or1ksim.S: ditto
+	* or1k/ordb1a3pe1500.S: ditto
+	* or1k/ordb2a.S: ditto
+	* or1k/orpsocrefdesign.S: ditto
+
+2012-04-12  Peter Gavin  <pgavin@gmail.com>
+
+	* README, configure.in, libnosys/configure.in: add or1k target
+	* or1k/aclocal.m4: new file from existing libgloss port
+	* or1k/close.c: ditto
+	* or1k/config.h.in: ditto
+	* or1k/configure: ditto
+	* or1k/configure.in: ditto
+	* or1k/COPYING: ditto
+	* or1k/crt0.S: ditto
+	* or1k/environ.c: ditto
+	* or1k/execve.c: ditto
+	* or1k/_exit.c: ditto
+	* or1k/fork.c: ditto
+	* or1k/fstat.c: ditto
+	* or1k/getpid.c: ditto
+	* or1k/impure-init.c: ditto
+	* or1k/isatty.c: ditto
+	* or1k/kill.c: ditto
+	* or1k/link.c: ditto
+	* or1k/lseek.c: ditto
+	* or1k/Makefile.in: ditto
+	* or1k/ml501.S: ditto
+	* or1k/open.c: ditto
+	* or1k/or1ksim.S: ditto
+	* or1k/or1ksim-uart.S: ditto
+	* or1k/ordb1a3pe1500.S: ditto
+	* or1k/ordb2a.S: ditto
+	* or1k/orpsocrefdesign.S: ditto
+	* or1k/read.c: ditto
+	* or1k/sbrk.c: ditto
+	* or1k/sim.cfg: ditto
+	* or1k/sim-uart.cfg: ditto
+	* or1k/stat.c: ditto
+	* or1k/times.c: ditto
+	* or1k/uart.c: ditto
+	* or1k/uart.h: ditto
+	* or1k/unlink.c: ditto
+	* or1k/wait.c: ditto
+	* or1k/write.c: ditto
