@@ -1,3 +1,17 @@
+# Hi Slashdot / LWN!
+Wow, cool that this ended up there.
+
+I want to add this here since some people seem worried that the repository hasn't been updated - it's all good!
+I'm currently cooling off from a lot of company travel while my bugs submitted to Debian package maintainers:
+https://bugs.debian.org/cgi-bin/pkgreport.cgi?correspondent=debian%40cmd.nu
+
+Another thing I'm waiting for is my new build server that will build the Debian packages straight from the
+hose as it where. It's taking longer than expected but will show up in a few weeks I'm hoping.
+
+If you want to try this thing or just want to talk to me, I'm on #openrisc @ FreeNode and #debian-boostrap @ Debian
+
+Thanks for noticing, stay hacking!
+
 # WARNING: This is a brain dump, I might be missing stuff.
 # For a recorded installation see http://asciinema.org/a/7362
 
