@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -e
 
 cd $(dirname $0)
 while [ true ]
@@ -12,7 +12,7 @@ do
 	echo "Building $package" | logger
 	# Update the timestamp
 	touch building/$package
-	~/building/build.sh $package || mv building/$package $file
+	~/or1k-debian/builder/build.sh $package || mv building/$package $file
 
 	mv building/$package built/
 	sleep 1
