@@ -13,7 +13,7 @@ do
 done
 
 ln -sf ~/or1k-debian/builder/builder.sh /tmp/builder.sh
-for i in $(seq 1 18)
+for i in $(seq 1 10)
 do
 	screen -dmS builder-$i ./builder.sh
 done
