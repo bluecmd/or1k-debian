@@ -604,7 +604,7 @@ esac
 sudo mkdir -p -m 0700 "$MNT"/root/.gnupg
 
 # debootstrap the chroot
-sudo ${proxy:+"http_proxy=${proxy}"} "$DEBOOTSTRAP_COMMAND" --no-check-gpg --arch="$CHROOT_ARCH" $variant_opt $debootstrap_opts "$RELEASE" "$MNT" "${DEBOOTSTRAP_MIRROR:-http://archive.ubuntu.com/ubuntu}"
+sudo ${proxy:+"http_proxy=${proxy}"} "$DEBOOTSTRAP_COMMAND" --no-check-gpg --arch="$CHROOT_ARCH" $variant_opt $debootstrap_opts "$RELEASE" "$MNT" "${DEBOOTSTRAP_MIRROR:-http://archive.ubuntu.com/ubuntu}"  || true
 
 # Update the package sources
 TEMP_SOURCES=`mktemp -t sources-XXXXXX`
