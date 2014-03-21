@@ -1,0 +1,4 @@
+deb [arch=all]       http://http.debian.net/debian     unstable       main
+deb [arch=or1k]      http://bob.cmd.nu/                unstable       main
+deb-src              http://http.debian.net/debian     unstable       main
+
