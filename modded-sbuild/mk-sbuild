@@ -1,0 +1,835 @@
+#!/bin/bash
+#
+# Copyright 2006-2013 (C) Canonical Ltd.
+# Authors:
+#  Kees Cook <kees@ubuntu.com>
+#  Emmet Hikory <persia@ubuntu.com>
+#  Scott Moser <smoser@ubuntu.com>
+#  Stefano Rivera <stefanor@ubuntu.com>
+#  Steve Langasek <steve.langasek@ubuntu.com>
+#  Marc Deslauriers <marc.deslauriers@ubuntu.com>
+#
+# ##################################################################
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 3
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# See file /usr/share/common-licenses/GPL for more details.
+#
+# ##################################################################
+#
+# This script creates chroots designed to be used in a snapshot mode
+# (with LVM, btrfs, overlayfs, or aufs) with schroot and sbuild.
+# Much love to "man sbuild-setup", https://wiki.ubuntu.com/PbuilderHowto,
+# and https://help.ubuntu.com/community/SbuildLVMHowto.
+#
+# It will deal with sbuild having not be installed and configured before.
+set -e
+
+# Set up configurable defaults (loaded after option processing)
+LV_SIZE="5G"
+SNAPSHOT_SIZE="4G"
+SOURCE_CHROOTS_DIR="/var/lib/schroot/chroots"
+SOURCE_CHROOTS_TGZ="/var/lib/schroot/tarballs"
+CHROOT_SNAPSHOT_DIR="/var/lib/schroot/snapshots"
+SCHROOT_PROFILE="sbuild"
+
+function usage()
+{
+    echo "Usage: $0 [OPTIONS] Release" >&2
+    echo "Options:"
+    echo "  --arch=ARCH                What architecture to select"
+    echo "  --name=NAME                Base name for the schroot (arch is appended)"
+    echo "  --personality=PERSONALITY  What personality to use (defaults to match --arch)"
+    echo "  --vg=VG                    use LVM snapshots, with group VG"
+    echo "  --debug                    Turn on script debugging"
+    echo "  --skip-updates             Do not include -updates pocket in sources.list"
+    echo "  --skip-proposed            Do not include -proposed pocket in sources.list"
+    echo "  --source-template=FILE     Use FILE as the sources.list template"
+    echo "  --debootstrap-mirror=URL   Use URL as the debootstrap source"
+    echo "  --debootstrap-include=list Comma separated list of packages to include"
+    echo "  --debootstrap-exclude=list Comma separated list of packages to exclude"
+    echo "  --debootstrap-proxy=URL    Use PROXY as apt proxy"
+    echo "  --eatmydata                Install and use eatmydata"
+    echo "  --distro=DISTRO            Install specific distro:"
+    echo "                                 'ubuntu' or 'debian' "
+    echo "                                 (defaults to determining from release name)"
+    echo "  --target=ARCH              Target architecture for cross-building"
+    echo "  --type=SCHROOT_TYPE        Define the schroot type:"
+    echo "                                 'directory'(default), 'file', or 'btrfs-snapshot'"
+    echo "                                 'lvm-snapshot' is selected via --vg"
+    echo ""
+    echo "Configuration (via ~/.mk-sbuild.rc)"
+    echo "  LV_SIZE                    Size of source LVs (default ${LV_SIZE})"
+    echo "  SNAPSHOT_SIZE              Size of snapshot LVs (default ${SNAPSHOT_SIZE})"
+    echo "  SOURCE_CHROOTS_DIR         Directory to store directory source chroots"
+    echo "  SOURCE_CHROOTS_TGZ         Directory to store file source chroots"
+    echo "  CHROOT_SNAPSHOT_DIR        Directory to mount open btrfs snaphshot chroots (default ${CHROOT_SNAPSHOT_DIR})"
+    echo "  SCHROOT_CONF_SUFFIX        Lines to append to schroot.conf entries"
+    echo "  SCHROOT_PROFILE            Profile to use with schroot (default ${SCHROOT_PROFILE})"
+    echo "  SKIP_UPDATES               Enable --skip-updates"
+    echo "  SKIP_PROPOSED              Enable --skip-proposed"
+    echo "  DEBOOTSTRAP_MIRROR         Mirror location (same as --debootstrap-mirror)"
+    echo "  DEBOOTSTRAP_INCLUDE        Included packages (same as --debootstrap-include)"
+    echo "  DEBOOTSTRAP_EXCLUDE        Excluded packages (same as --debootstrap-exclude)"
+    echo "  DEBOOTSTRAP_PROXY          Apt proxy (same as --debootstrap-proxy)"
+    echo "  EATMYDATA                  Enable --eatmydata"
+    echo "  TEMPLATE_SOURCES           A template for sources.list"
+    echo "  TEMPLATE_SCHROOTCONF       A template for schroot.conf stanza"
+    if [ -z "$1" ]; then
+        exit 1
+    fi
+    exit $1
+}
+
+
+if [ -z "$1" ]; then
+    usage
+fi
+OPTS=`getopt -o 'h' --long "help,debug,skip-updates,skip-proposed,eatmydata,arch:,name:,source-template:,debootstrap-mirror:,debootstrap-include:,debootstrap-exclude:,debootstrap-proxy:,personality:,distro:,vg:,type:,target:" -- "$@"`
+eval set -- "$OPTS"
+
+VG=""
+DISTRO=""
+name=""
+proxy="_unset_"
+EATMYDATA=0
+
+while :; do
+    case "$1" in
+        --debug)
+            set -x
+            shift
+            ;;
+        --arch)
+            CHROOT_ARCH="$2"
+            if [ "$2" = "i386" ] || [ "$2" = "lpia" ] && [ -z "$personality" ];
+            then
+                personality="linux32"
+            fi
+            shift 2
+            ;;
+        --personality)
+            personality="$2"
+            shift 2
+            ;;
+        --skip-updates)
+            SKIP_UPDATES="1"
+            shift
+            ;;
+        --skip-proposed)
+            SKIP_PROPOSED="1"
+            shift
+            ;;
+        --name)
+            name="$2"
+            shift 2
+            ;;
+        --source-template)
+            TEMPLATE_SOURCES="$2"
+            shift 2
+            if [ ! -r $TEMPLATE_SOURCES ]; then
+                echo "W: Template file $TEMPLATE_SOURCES is not readable"
+                echo "W: Continuing with default sources!"
+            fi
+            ;;
+        --debootstrap-mirror)
+            DEBOOTSTRAP_MIRROR="$2"
+            shift 2
+            ;;
+        --debootstrap-include)
+            DEBOOTSTRAP_INCLUDE="$2"
+            shift 2
+            ;;
+        --debootstrap-exclude)
+            DEBOOTSTRAP_EXCLUDE="$2"
+            shift 2
+            ;;
+        --debootstrap-proxy)
+            proxy="$2"
+            shift 2
+            ;;
+        --eatmydata)
+            EATMYDATA=1
+            shift
+            ;;
+        --distro)
+            DISTRO="$2"
+            shift 2
+            ;;
+        --vg)
+            VG="$2"
+            shift 2
+            ;;
+        --type)
+            SCHROOT_TYPE="$2"
+            shift 2
+            ;;
+        --target)
+            TARGET_ARCH="$2"
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -h|--help|*)
+            usage 0
+            ;;
+     esac
+done
+
+# For when schroot enters the chroot, we cannot be in a directory that
+# will not exist in the chroot.
+cd /
+
+if [ -w /etc/passwd -a ! -e ~/.sbuildrc -a ! -e ~/.mk-sbuild.rc ]; then
+    cat >&2 <<EOF
+It's recommended to run this script as a regular user, not root, so that it
+uses the configuration files in your home directory.
+It will use sudo to escalate to root as necessary.
+
+If you really do want to use it as root, create a .sbuildrc or .mk-sbuild.rc
+in root's home.
+EOF
+    exit 1
+fi
+
+# Perform once-only things to initially set up for using sbuild+schroot
+if [ ! -w /var/lib/sbuild ]; then
+    # Load all the packages you'll need to do work
+    sudo apt-get install sbuild schroot debootstrap
+    # Add self to the sbuild group
+    sudo adduser "$USER" sbuild
+
+    # Prepare a usable default .sbuildrc
+    if [ ! -e ~/.sbuildrc ]; then
+        cat > ~/.sbuildrc <<EOM
+# *** VERIFY AND UPDATE \$mailto and \$maintainer_name BELOW ***
+
+# Mail address where logs are sent to (mandatory, no default!)
+\$mailto = '$USER';
+
+# Name to use as override in .changes files for the Maintainer: field
+#\$maintainer_name='$USER <$USER@localhost>';
+
+# Directory for chroot symlinks and sbuild logs.  Defaults to the
+# current directory if unspecified.
+#\$build_dir='$HOME/ubuntu/build';
+
+# Directory for writing build logs to
+\$log_dir="$HOME/ubuntu/logs";
+
+# don't remove this, Perl needs it:
+1;
+EOM
+        sensible-editor ~/.sbuildrc
+        # Create target directories, if needed
+        eval $(egrep '^\$(build|log)_dir[ 	]*=' ~/.sbuildrc | cut -c2-)
+        if [ -n "$log_dir" ]; then
+            mkdir -p "$log_dir"
+        fi
+        if [ -n "$build_dir" ]; then
+            mkdir -p "$build_dir"
+        fi
+    else
+        echo "Your ~/.sbuildrc already exists -- leaving it as-is."
+    fi
+
+    echo '***********************************************'
+    echo '* Before continuing, you MUST restart your    *'
+    echo '* session to gain "sbuild" group permissions! *'
+    echo '***********************************************'
+    exit 0
+fi
+
+if ! id | fgrep -q '(sbuild)'; then
+    echo "You must be a member of the 'sbuild' group." >&2
+    exit 1
+fi
+
+# To build the chroot, we need to know which release of Ubuntu to debootstrap
+RELEASE="$1"
+if [ -z "$RELEASE" ]; then
+    usage
+fi
+
+# Determine distribution and possible synonyms
+synonym=""
+EXPERIMENTAL=0
+if [ "$RELEASE" = "experimental" ]; then
+    DISTRO="${DISTRO:-debian}"
+    EXPERIMENTAL=1
+    name="${name:-experimental}"
+    RELEASE=$(debian-distro-info --devel)
+elif debian-distro-info --all | grep -Fqx "$RELEASE"; then
+    DISTRO="${DISTRO:-debian}"
+    if [ "$RELEASE" = $(debian-distro-info --devel) ]; then
+        synonym=unstable
+    elif [ "$RELEASE" = $(debian-distro-info --testing) ]; then
+        synonym=testing
+    elif [ "$RELEASE" = $(debian-distro-info --stable) ]; then
+        synonym=stable
+    elif [ "$RELEASE" = $(debian-distro-info --old) ]; then
+        synonym=oldstable
+    fi
+elif ubuntu-distro-info --all | grep -Fqx "$RELEASE"; then
+    DISTRO="${DISTRO:-ubuntu}"
+elif [ "$RELEASE" = "unstable" ]; then
+    DISTRO="${DISTRO:-debian}"
+    synonym="$RELEASE"
+    RELEASE='unstable'
+elif [ "$RELEASE" = "testing" ]; then
+    DISTRO="${DISTRO:-debian}"
+    synonym="$RELEASE"
+    RELEASE=$(debian-distro-info --testing)
+elif [ "$RELEASE" = "stable" ]; then
+    DISTRO="${DISTRO:-debian}"
+    synonym="$RELEASE"
+    RELEASE=$(debian-distro-info --stable)
+elif [ "$RELEASE" = "oldstable" ]; then
+    DISTRO="${DISTRO:-debian}"
+    synonym="$RELEASE"
+    RELEASE=$(debian-distro-info --old)
+elif [ -z "$DISTRO" ]; then
+    echo "Unable to determine distribution, please provide --distro" >&2
+    exit 1
+fi
+
+# By default, name the schroot the same as the release
+if [ -z "$name" ]; then
+    name="$RELEASE"
+else
+    # Disable synonym when a custom name is used:
+    synonym=""
+fi
+
+# By default, use the native architecture.
+HOST_ARCH=$(dpkg --print-architecture)
+if [ -z "$CHROOT_ARCH" ]; then
+    CHROOT_ARCH="$HOST_ARCH"
+fi
+
+if [ -z "$TARGET_ARCH" ]; then
+    CHROOT_NAME="${name}-${CHROOT_ARCH}"
+else
+    CHROOT_NAME="${name}-${CHROOT_ARCH}-${TARGET_ARCH}"
+fi
+
+if [ -z "$synonym" ]; then
+    CHROOT_SYNONYM=""
+else
+    CHROOT_SYNONYM="${synonym}-${CHROOT_ARCH}"
+fi
+
+# Load customizations
+if [ -r ~/.mk-sbuild.rc ]; then
+    . ~/.mk-sbuild.rc
+fi
+
+# Will eatmydata be available?
+if [ $EATMYDATA -eq 1 ]; then
+    case "$RELEASE" in
+        hardy|lucid|maverick|lenny|squeeze)
+            echo "eatmydata is known not to be available in $RELEASE, ignoring --eatmydata"
+            EATMYDATA=0
+            ;;
+        *)
+            DEBOOTSTRAP_INCLUDE="${DEBOOTSTRAP_INCLUDE:+$DEBOOTSTRAP_INCLUDE,}eatmydata"
+            ;;
+    esac
+fi
+
+if [ -z "$SCHROOT_TYPE" ]; then
+    # To build the LV, we need to know which volume group to use
+    if [ -n "$VG" ]; then
+        SCHROOT_TYPE="lvm-snapshot"
+    else
+        SCHROOT_TYPE="directory"
+    fi
+fi
+
+case "$SCHROOT_TYPE" in
+"lvm-snapshot")
+    # Make sure LVM tools that operate on the snapshots have needed module
+    if ! sudo dmsetup targets | grep -q ^snapshot; then
+        sudo modprobe dm_snapshot
+        echo dm_snapshot | sudo tee -a /etc/modules >/dev/null
+    fi
+
+    # Set up some variables for use in the paths and names
+    if [ -z "$TARGET_ARCH" ]; then
+        CHROOT_LV="${name}_${CHROOT_ARCH}_chroot"
+    else
+        CHROOT_LV="${name}_${CHROOT_ARCH}_${TARGET_ARCH}_chroot"
+    fi
+    CHROOT_PATH="/dev/$VG/$CHROOT_LV"
+
+    # Install lvm2 if missing
+    if ! dpkg -l lvm2 >/dev/null 2>&1; then
+        sudo apt-get install lvm2
+    fi
+
+    # Does the specified VG exist?  (vgdisplay doesn't set error codes...)
+    if [ `sudo vgdisplay -c "$VG" | wc -l` -eq 0 ]; then
+        echo "Volume group '${VG}' does not appear to exist" >&2
+        exit 1
+    fi
+    ;;
+"directory")
+    if [ ! -d "${SOURCE_CHROOTS_DIR}" ]; then
+        sudo mkdir -p "${SOURCE_CHROOTS_DIR}"
+    fi
+    # Set up some variables for use in the paths and names
+    CHROOT_PATH="${SOURCE_CHROOTS_DIR}/${CHROOT_NAME}"
+    ;;
+"file")
+    if [ ! -d "$SOURCE_CHROOTS_TGZ" ]; then
+        sudo mkdir -p "$SOURCE_CHROOTS_TGZ"
+    fi
+    # Set up some variables for use in the paths and names
+    CHROOT_PATH="${SOURCE_CHROOTS_TGZ}/${CHROOT_NAME}.tgz"
+    ;;
+"btrfs-snapshot")
+    if [ ! -d "${SOURCE_CHROOTS_DIR}" ]; then
+        sudo mkdir -p "${SOURCE_CHROOTS_DIR}"
+    fi
+    if [ ! -d "${CHROOT_SNAPSHOT_DIR}" ]; then
+        sudo mkdir -p "${CHROOT_SNAPSHOT_DIR}"
+    fi
+    CHROOT_PATH="${SOURCE_CHROOTS_DIR}/${CHROOT_NAME}"
+    ;;
+*)
+    echo 'unknown source type!?' >&2
+    exit 1
+    ;;
+esac
+
+# Is the specified release known to debootstrap?
+variant_opt="--variant=buildd"
+if [ ! -r "/usr/share/debootstrap/scripts/$RELEASE" ]; then
+    echo "Specified release ($RELEASE) not known to debootstrap" >&2
+    exit 1
+fi
+
+BUILD_PKGS="build-essential fakeroot apt-utils"
+# Handle distro-specific logic, unknown to debootstrap
+case "$DISTRO" in
+ubuntu)
+    if [ -z "$DEBOOTSTRAP_MIRROR" ]; then
+        case "$CHROOT_ARCH" in
+        amd64 | i386)
+            DEBOOTSTRAP_MIRROR="http://archive.ubuntu.com/ubuntu"
+            ;;
+        *)
+            DEBOOTSTRAP_MIRROR="http://ports.ubuntu.com/ubuntu-ports"
+            ;;
+        esac
+    fi
+    if [ -z "$COMPONENTS" ]; then
+        COMPONENTS="main restricted universe multiverse"
+    fi
+    if [ -z "$SOURCES_PROPOSED_SUITE" ]; then
+        SOURCES_PROPOSED_SUITE="RELEASE-proposed"
+    fi
+    if [ -z "$SOURCES_SECURITY_SUITE" ]; then
+        SOURCES_SECURITY_SUITE="RELEASE-security"
+    fi
+    if [ -z "$SOURCES_SECURITY_URL" ]; then
+        case "$CHROOT_ARCH" in
+        amd64 | i386)
+            SOURCES_SECURITY_URL="http://security.ubuntu.com/ubuntu"
+            ;;
+        *)
+            SOURCES_SECURITY_URL="http://ports.ubuntu.com/ubuntu-ports"
+            ;;
+        esac
+    fi
+    if [ -n "$TARGET_ARCH" ]; then
+        # target chroots only supported in precise and later, so ignore
+        # the fact that powerpc was once not on ports.
+        case "$TARGET_ARCH" in
+        amd64 | i386)
+            TARGET_MIRROR="http://archive.ubuntu.com/ubuntu"
+            TARGET_SOURCES_SECURITY_URL="http://security.ubuntu.com/ubuntu"
+            ;;
+        *)
+            TARGET_MIRROR="http://ports.ubuntu.com/ubuntu-ports"
+            TARGET_SOURCES_SECURITY_URL="http://ports.ubuntu.com/ubuntu-ports"
+            ;;
+        esac
+    fi
+    # Add edgy+ buildd tools
+    if [ "$RELEASE" != "breezy" ] && [ "$RELEASE" != "dapper" ]; then
+        # Disable recommends for a smaller chroot (gutsy and later only)
+        BUILD_PKGS="--no-install-recommends $BUILD_PKGS"
+        # Add buildd tools
+        BUILD_PKGS="$BUILD_PKGS pkg-create-dbgsym pkgbinarymangler"
+    fi
+    ;;
+debian)
+    if [ -z "$DEBOOTSTRAP_MIRROR" ]; then
+        DEBOOTSTRAP_MIRROR="http://ftp.debian.org/debian"
+    fi
+    if [ -z "$COMPONENTS" ]; then
+        COMPONENTS="main non-free contrib"
+    fi
+    if [ -z "$SOURCES_PROPOSED_SUITE" ]; then
+        SOURCES_PROPOSED_SUITE="RELEASE-proposed-updates"
+    fi
+    # Debian only performs security updates
+    SKIP_UPDATES=1
+    if [ -z "$SOURCES_SECURITY_SUITE" ]; then
+        SOURCES_SECURITY_SUITE="RELEASE/updates"
+    fi
+    if [ -z "$SOURCES_SECURITY_URL" ]; then
+        SOURCES_SECURITY_URL="http://security.debian.org/"
+    fi
+    if [ -n "$TARGET_ARCH" ]; then
+        TARGET_MIRROR="$DEBOOTSTRAP_MIRROR"
+        TARGET_SOURCES_SECURITY_URL="$SOURCES_SECURITY_URL"
+    fi
+    # Unstable and Experimental do not have security or proposed repositories
+    if [ "$RELEASE" = 'unstable' ] || [ "$RELEASE" = 'sid' ] || [ "$RELEASE" = 'experimental' ]; then
+        SKIP_SECURITY=1
+        SKIP_PROPOSED=1
+    fi
+    # Keep the chroot as minimal as possible
+    BUILD_PKGS="--no-install-recommends $BUILD_PKGS"
+    ;;
+*)
+    echo "Unknown --distro '$DISTRO': aborting" >&2
+    exit 1
+    ;;
+esac
+
+if [ -n "$TARGET_ARCH" ]; then
+    # Ultimately we would like there to be a "cross-build-essential-$arch"
+    # package.  In practice, the cross-g++ package is sufficient to pull in
+    # everything we need.
+    if ! target_tuple=$(dpkg-architecture -a"$TARGET_ARCH" -qDEB_HOST_GNU_TYPE 2>/dev/null)
+    then
+        echo "Unknown target architecture $TARGET_ARCH" >&2
+        exit 1
+    fi
+    BUILD_PKGS="$BUILD_PKGS g++-$target_tuple pkg-config-$target_tuple dpkg-cross libc-dev:$TARGET_ARCH"
+fi
+
+debootstrap_opts="--components=$(echo $COMPONENTS | tr ' ' ,)"
+if [ -n "$DEBOOTSTRAP_INCLUDE" ] ; then
+    debootstrap_opts="$debootstrap_opts --include=$DEBOOTSTRAP_INCLUDE"
+fi
+
+if [ -n "$DEBOOTSTRAP_EXCLUDE" ] ; then
+    debootstrap_opts="$debootstrap_opts --exclude=$DEBOOTSTRAP_EXCLUDE"
+fi
+
+# if http_proxy is set in the environment (even empty) set 'proxy' to it
+[ "$proxy" = "_unset_" -a "${DEBOOTSTRAP_PROXY-xx}" != "xx" ] &&
+    proxy=${DEBOOTSTRAP_PROXY}
+[ "$proxy" = "_unset_" -a "${http_proxy-xx}" != "xx" ] && proxy=${http_proxy}
+if [ "$proxy" = "_unset_" ]; then
+    _out=$(apt-config shell x Acquire::HTTP::Proxy) &&
+        _out=$(sh -c 'eval $1 && echo $x' -- "$_out") && [ -n "$_out" ] &&
+        proxy="$_out"
+fi
+[ "$proxy" = "_unset_" ] && proxy=""
+
+DEBOOTSTRAP_COMMAND=debootstrap
+# Use qemu-kvm-extras-static for foreign chroots
+if [ "$CHROOT_ARCH" != "$HOST_ARCH" ] ; then
+    case "$CHROOT_ARCH-$HOST_ARCH" in
+    # Sometimes we don't need qemu
+    amd64-i386|amd64-lpia|arm-armel|armel-arm|armel-armhf|armhf-armel|arm64-arm|arm64-armel|arm64-armhf|i386-amd64|i386-lpia|lpia-i386|powerpc-ppc64|ppc64-powerpc|sparc-sparc64|sparc64-sparc)
+        ;;
+    # Sometimes we do
+    *)
+        DEBOOTSTRAP_COMMAND=qemu-debootstrap
+        if ! which "$DEBOOTSTRAP_COMMAND"; then
+            sudo apt-get install qemu-user-static
+        fi
+        ;;
+    esac
+fi
+
+case "$SCHROOT_TYPE" in
+"lvm-snapshot")
+    # Allocate the "golden" chroot LV
+    sudo lvcreate -n "$CHROOT_LV" -L "$LV_SIZE" "$VG"
+    sudo mkfs -t ext4 "$CHROOT_PATH"
+
+    # Mount
+    MNT=`mktemp -d -t schroot-XXXXXX`
+    sudo mount "$CHROOT_PATH" "$MNT"
+    ;;
+"directory")
+    MNT="${CHROOT_PATH}"
+    if [ -d "${MNT}" ]; then
+        echo "E: ${MNT} already exists; aborting" >&2
+        exit 1
+    fi
+    sudo mkdir -p "${MNT}"
+    ;;
+"btrfs-snapshot")
+    MNT="${CHROOT_PATH}"
+    if sudo btrfs subvolume list "${MNT}" >/dev/null 2>&1; then
+        echo "E: Subvolume ${MNT} already exists; aborting" >&2
+        exit 1
+    fi
+    sudo btrfs subvolume create "${MNT}"
+    ;;
+"file")
+    MNT=`mktemp -d -t schroot-XXXXXX`
+esac
+
+# Debian doesn't have overlayfs yet
+case "$SCHROOT_TYPE" in
+    directory|file)
+    if grep -q '\soverlayfs$' /proc/filesystems \
+            || /sbin/modprobe -q --dry-run overlayfs; then
+        OVERLAY_FS=overlayfs
+    else
+        OVERLAY_FS=aufs
+    fi
+esac
+
+# work around apt's GPG invocation that fails without root's .gnupg directory
+sudo mkdir -p -m 0700 "$MNT"/root/.gnupg
+
+# debootstrap the chroot
+sudo ${proxy:+"http_proxy=${proxy}"} "$DEBOOTSTRAP_COMMAND" --no-check-gpg --arch="$CHROOT_ARCH" $variant_opt $debootstrap_opts "$RELEASE" "$MNT" "${DEBOOTSTRAP_MIRROR:-http://archive.ubuntu.com/ubuntu}"
+
+# Update the package sources
+TEMP_SOURCES=`mktemp -t sources-XXXXXX`
+if [ -z "$TEMPLATE_SOURCES" ]; then
+    TEMPLATE_SOURCES=~/.mk-sbuild.sources
+fi
+if [ -n "$TARGET_ARCH" ]; then
+    MIRROR_ARCHS="[arch=$CHROOT_ARCH] "
+fi
+if [ -r "$TEMPLATE_SOURCES" ]; then
+    cat "$TEMPLATE_SOURCES" > "$TEMP_SOURCES"
+else
+    cat > "$TEMP_SOURCES" <<EOM
+deb ${MIRROR_ARCHS}${DEBOOTSTRAP_MIRROR} RELEASE ${COMPONENTS}
+deb-src ${DEBOOTSTRAP_MIRROR} RELEASE ${COMPONENTS}
+EOM
+    if [ -n "$TARGET_ARCH" ]; then
+        cat >> "$TEMP_SOURCES" <<EOM
+deb [arch=$TARGET_ARCH] $TARGET_MIRROR RELEASE $COMPONENTS
+EOM
+    fi
+    if [ "$EXPERIMENTAL" -eq 1 ]; then
+        cat >> "$TEMP_SOURCES" <<EOM
+deb ${MIRROR_ARCHS}${DEBOOTSTRAP_MIRROR} experimental ${COMPONENTS}
+deb-src ${DEBOOTSTRAP_MIRROR} experimental ${COMPONENTS}
+EOM
+        if [ -n "$TARGET_ARCH" ]; then
+            cat >> "$TEMP_SOURCES" <<EOM
+deb [arch=$TARGET_ARCH] $TARGET_MIRROR experimental $COMPONENTS
+EOM
+        fi
+    fi
+    if [ -z "$SKIP_UPDATES" ]; then
+        cat >> "$TEMP_SOURCES" <<EOM
+deb ${MIRROR_ARCHS}${DEBOOTSTRAP_MIRROR} RELEASE-updates ${COMPONENTS}
+deb-src ${DEBOOTSTRAP_MIRROR} RELEASE-updates ${COMPONENTS}
+EOM
+        if [ -n "$TARGET_ARCH" ]; then
+            cat >> "$TEMP_SOURCES" <<EOM
+deb [arch=$TARGET_ARCH] $TARGET_MIRROR RELEASE-updates $COMPONENTS
+EOM
+        fi
+    fi
+    if [ -z "$SKIP_PROPOSED" ]; then
+        cat >> "$TEMP_SOURCES" <<EOM
+deb ${MIRROR_ARCHS}${DEBOOTSTRAP_MIRROR} $SOURCES_PROPOSED_SUITE ${COMPONENTS}
+deb-src ${DEBOOTSTRAP_MIRROR} $SOURCES_PROPOSED_SUITE ${COMPONENTS}
+EOM
+        if [ -n "$TARGET_ARCH" ]; then
+            cat >> "$TEMP_SOURCES" <<EOM
+deb [arch=$TARGET_ARCH] $TARGET_MIRROR $SOURCES_PROPOSED_SUITE $COMPONENTS
+EOM
+        fi
+    fi
+    if [ -z "$SKIP_SECURITY" ]; then
+        cat >> "$TEMP_SOURCES" <<EOM
+deb ${MIRROR_ARCHS}${SOURCES_SECURITY_URL} ${SOURCES_SECURITY_SUITE} ${COMPONENTS}
+deb-src ${SOURCES_SECURITY_URL} ${SOURCES_SECURITY_SUITE} ${COMPONENTS}
+EOM
+        if [ -n "$TARGET_ARCH" ]; then
+            cat >> "$TEMP_SOURCES" <<EOM
+deb [arch=$TARGET_ARCH] $TARGET_SOURCES_SECURITY_URL $SOURCES_SECURITY_SUITE $COMPONENTS
+EOM
+        fi
+    fi
+fi
+cat "$TEMP_SOURCES" | sed -e "s|RELEASE|$RELEASE|g" | \
+    sudo bash -c "cat > $MNT/etc/apt/sources.list"
+rm -f "$TEMP_SOURCES"
+
+# Copy the timezone (comment this out if you want to leave the chroot at UTC)
+sudo cp /etc/localtime /etc/timezone "$MNT"/etc/
+# Create a schroot entry for this chroot
+TEMP_SCHROOTCONF=`mktemp -t schrootconf-XXXXXX`
+TEMPLATE_SCHROOTCONF=~/.mk-sbuild.schroot.conf
+TYPED_TEMPLATE_SCHROOTCONF="${TEMPLATE_SCHROOTCONF}.${SCHROOT_TYPE}"
+
+if [ -r "${TYPED_TEMPLATE_SCHROOTCONF}" ]; then
+    cat "${TYPED_TEMPLATE_SCHROOTCONF}" > "$TEMP_SCHROOTCONF"
+elif [ -r "${TEMPLATE_SCHROOTCONF}" ]; then
+    cat "$TEMPLATE_SCHROOTCONF" > "$TEMP_SCHROOTCONF"
+else
+    ADMIN_GROUPS="sbuild,root"
+    if getent group admin > /dev/null; then
+        ADMIN_GROUPS+=",admin"
+    fi
+    cat > "$TEMP_SCHROOTCONF" <<EOM
+[CHROOT_NAME]
+description=CHROOT_NAME
+groups=$ADMIN_GROUPS
+root-groups=$ADMIN_GROUPS
+# Uncomment these lines to allow members of these groups to access
+# the -source chroots directly (useful for automated updates, etc).
+#source-root-users=$ADMIN_GROUPS
+#source-root-groups=$ADMIN_GROUPS
+type=SCHROOT_TYPE
+profile=$SCHROOT_PROFILE
+EOM
+    if [ $EATMYDATA -eq 1 ]; then
+    cat >> "$TEMP_SCHROOTCONF" <<EOM
+command-prefix=eatmydata
+EOM
+    fi
+    case "$SCHROOT_TYPE" in
+    "lvm-snapshot")
+        cat >> "$TEMP_SCHROOTCONF" <<EOM
+device=CHROOT_PATH
+mount-options=-o noatime
+lvm-snapshot-options=--size SNAPSHOT_SIZE
+EOM
+    ;;
+    directory|file)
+        cat >> "${TEMP_SCHROOTCONF}" <<EOM
+union-type=$OVERLAY_FS
+${SCHROOT_TYPE}=CHROOT_PATH
+EOM
+    ;;
+    btrfs-snapshot)
+        cat >> "${TEMP_SCHROOTCONF}" <<EOM
+btrfs-source-subvolume=CHROOT_PATH
+btrfs-snapshot-directory=CHROOT_SNAPSHOT_DIR
+EOM
+    ;;
+    esac
+fi
+if [ ! -z "$personality" ]; then
+    echo "personality=$personality" >> "$TEMP_SCHROOTCONF"
+fi
+if [ ! -z "$CHROOT_SYNONYM" ]; then
+    echo "aliases=$CHROOT_SYNONYM" >> "$TEMP_SCHROOTCONF"
+fi
+if [ ! -z "$SCHROOT_CONF_SUFFIX" ]; then
+    echo "$SCHROOT_CONF_SUFFIX" >> "$TEMP_SCHROOTCONF"
+fi
+sed -e "s|CHROOT_NAME|$CHROOT_NAME|g" \
+    -e "s|CHROOT_PATH|$CHROOT_PATH|g" \
+    -e "s|SNAPSHOT_SIZE|$SNAPSHOT_SIZE|g" \
+    -e "s|SCHROOT_TYPE|$SCHROOT_TYPE|g" \
+    -e "s|CHROOT_SNAPSHOT_DIR|$CHROOT_SNAPSHOT_DIR|g" \
+    "$TEMP_SCHROOTCONF" \
+    | sudo tee "/etc/schroot/chroot.d/sbuild-$CHROOT_NAME" > /dev/null
+rm -f "$TEMP_SCHROOTCONF"
+
+# Disable daemons in chroot:
+sudo bash -c "cat >> $MNT/usr/sbin/policy-rc.d" <<EOM
+#!/bin/sh
+while true; do
+    case "\$1" in
+      -*) shift ;;
+      makedev) exit 0;;
+      x11-common) exit 0;;
+      *) exit 101;;
+    esac
+done
+EOM
+sudo chmod a+x "$MNT"/usr/sbin/policy-rc.d
+
+# Create image finalization script
+sudo bash -c "cat >> $MNT/finish.sh" <<EOM
+#!/bin/bash
+#set -x
+set -e
+if [ -n "$proxy" ]; then
+   mkdir -p /etc/apt/apt.conf.d/
+   cat > /etc/apt/apt.conf.d/99mk-sbuild-proxy <<EOF
+// proxy settings copied from mk-sbuild
+Acquire { HTTP { Proxy "$proxy"; }; };
+EOF
+fi
+EOM
+
+if [ -n "$TARGET_ARCH" ]; then
+    sudo bash -c "cat >> $MNT/finish.sh" <<EOM
+# Configure target architecture
+dpkg --add-architecture "$TARGET_ARCH"
+EOM
+fi
+
+sudo bash -c "cat >> $MNT/finish.sh" <<EOM
+# Reload package lists
+apt-get update || true
+# Pull down signature requirements
+apt-get -y --force-yes install gnupg ${DISTRO}-keyring
+# Reload package lists
+apt-get update || true
+# Disable debconf questions so that automated builds won't prompt
+echo set debconf/frontend Noninteractive | debconf-communicate
+echo set debconf/priority critical | debconf-communicate
+# Install basic build tool set, trying to match buildd
+apt-get -y --force-yes install $BUILD_PKGS
+# Set up expected /dev entries
+if [ ! -r /dev/stdin ];  then ln -s /proc/self/fd/0 /dev/stdin;  fi
+if [ ! -r /dev/stdout ]; then ln -s /proc/self/fd/1 /dev/stdout; fi
+if [ ! -r /dev/stderr ]; then ln -s /proc/self/fd/2 /dev/stderr; fi
+# Clean up
+rm /finish.sh
+apt-get clean
+EOM
+sudo chmod a+x "$MNT"/finish.sh
+
+case "$SCHROOT_TYPE" in
+"lvm-snapshot")
+    sudo umount "$MNT"
+    rmdir "$MNT"
+    ;;
+"directory"|"btrfs-snapshot")
+    ;;
+"file")
+    cd "$MNT"
+    sudo tar czf "$CHROOT_PATH" .
+    cd /
+    sudo rm -r "$MNT"
+    ;;
+esac
+
+# Run finalization script on the "golden" copy via schroot.
+sudo schroot -c source:$CHROOT_NAME -u root /finish.sh
+
+# Finished
+echo ""
+echo "Done building $CHROOT_NAME."
+echo ""
+echo " To CHANGE the golden image: sudo schroot -c source:${CHROOT_NAME} -u root"
+echo " To ENTER an image snapshot: schroot -c ${CHROOT_NAME}"
+echo " To BUILD within a snapshot: sbuild -A -d ${CHROOT_NAME} PACKAGE*.dsc"
+echo ""
+
+# vi: set et:

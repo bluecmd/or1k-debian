@@ -1,0 +1,4 @@
+builder.sh uses the output of botch's native.sh outputted to files in a to-build/ directory.
+It simply moves files around as locks and can be launched as many times as there are CPUs
+
+build.sh takes a package and finds the latest version and starts a sbuild for it
