@@ -1,4 +1,4 @@
-deb [arch=all]       http://snapshot.debian.org/archive/debian/20140321T160557Z/     unstable       main
+deb [arch=all]       http://snapshot.debian.org/archive/debian/20140321T100510Z/     unstable       main
 deb [arch=or1k]      http://bob.cmd.nu/                unstable       main
-deb-src              http://snapshot.debian.org/archive/debian/20140321T160557Z/     unstable       main
+deb-src              http://snapshot.debian.org/archive/debian/20140321T100510Z/     unstable       main
 
