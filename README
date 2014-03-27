@@ -15,9 +15,9 @@ sudo apt-get install debootstrap
 sudo debootstrap --include=perl --no-check-gpg --foreign --arch or1k unstable initramfs http://openrisc.debian.net/
 sudo cp /usr/bin/qemu-or1k-static initramfs/usr/bin
 
-# It's important that you have executed qemu-binfmt-conf.sh at this point
+# It's important that you have configured binfmt-support at this point (see above).
 # This should start to configure your new Debian system. No errors should be reported.
-sudo chroot initramfs /usr/local/bin/qemu-or32  -E PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin bin/bash /debootstrap/debootstrap --second-stage 
+sudo chroot initramfs /usr/bin/qemu-or1k-static  -E PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin bin/bash /debootstrap/debootstrap --second-stage 
 
 # Hacks:
 #  - Redirect console to ttyS0 (inittab)
