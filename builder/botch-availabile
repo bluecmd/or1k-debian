@@ -1,0 +1,6 @@
+
+MATCHER=$(cat /home/repository/dists/unstable/main/binary-or1k/Packages \
+  | grep-dctrl  -X -F Architecture or1k -s Package | cut -f 2- -d ' ' \
+  | xargs -I{} echo '-FPackage {} --or ' | xargs echo)
+
+zutils --zcat "$1" | grep-dctrl -X \( ${MATCHER} -FPackage w3m \)

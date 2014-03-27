@@ -1,0 +1,4 @@
+#!/bin/bash
+
+grep '^1' order1.lst |xargs -n1 echo | grep '^src:' | cut -f 2- -d ':' | sort | uniq | comm -2 -3 /dev/stdin ~/debian/broken-packages > work
+split -nl/4 work
