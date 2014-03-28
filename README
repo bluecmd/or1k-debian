@@ -28,7 +28,7 @@ sudo chroot initramfs /usr/bin/qemu-or1k-static  -E PATH=/bin:/sbin:/usr/bin:/us
 # the repository having expired.
 sudo cp hacks/logsave initramfs/bin
 sudo cp hacks/inittab initramfs/etc/
-sudo cp hacks/sources.list initramfs/etc/apt
+sudo cp builder/sources.list initramfs/etc/apt
 echo "APT::Get::AllowUnauthenticated true;"| sudo tee -a initramfs/etc/apt/apt.conf.d/70debconf
 # Set a root password
 sudo chroot initramfs usr/bin/passwd
