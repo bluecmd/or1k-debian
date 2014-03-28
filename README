@@ -48,7 +48,7 @@ sudo chroot initramfs usr/bin/passwd
 
 cat << _EOF_ > ~/.mk-sbuild.sources
 deb [arch=all]       http://snapshot.debian.org/archive/debian/20140321T100510Z/     unstable       main
-deb [arch=or1k]      http://bob.cmd.nu/                unstable       main
+deb [arch=or1k]      http://openrisc.debian.net/                unstable       main
 deb-src              http://snapshot.debian.org/archive/debian/20140321T100510Z/     unstable       main
 _EOF_
 
