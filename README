@@ -22,12 +22,11 @@ sudo chroot initramfs /usr/bin/qemu-or1k-static  -E PATH=/bin:/sbin:/usr/bin:/us
 # Hacks:
 #  - Redirect console to ttyS0 (inittab)
 #  - Don't try to start swap (NOSWAP)
-#  - We don't want e2fsprogs (logsave)
 #  - Add repository (sources.list)
 # You might want to update the snapshot timestamp in sources.list if you get errors about
 # the repository having expired.
-sudo cp hacks/logsave initramfs/bin
 sudo cp hacks/inittab initramfs/etc/
+echo "NOSWAP=yes" | sudo tee -a initramfs/etc/default/rcS
 sudo cp builder/sources.list initramfs/etc/apt
 echo "APT::Get::AllowUnauthenticated true;"| sudo tee -a initramfs/etc/apt/apt.conf.d/70debconf
 # Set a root password
