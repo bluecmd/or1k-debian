@@ -45,6 +45,8 @@ sudo chroot initramfs usr/bin/passwd
 
 #### Create sbuild schroot for building packages
 
+# NOTE: Please compare the snapshot version here with the one in builder/sources.list and make sure
+# to use the newest one (probably builder/sources.list)
 cat << _EOF_ > ~/.mk-sbuild.sources
 deb [arch=all]       http://snapshot.debian.org/archive/debian/20140321T100510Z/     unstable       main
 deb [arch=or1k]      http://openrisc.debian.net/                unstable       main
@@ -59,6 +61,9 @@ cp modded-sbuild/qemu-bootstrap /usr/sbin/
 # if this is the case.
 mk-sbuild --arch or1k --debootstrap-include=perl --debootstrap-mirror=http://openrisc.debian.net/ unstable
 
+sudo schroot -c source:unstable-or1k -d /tmp
+echo "Acquire::Check-Valid-Until false;" >> /etc/apt/apt.conf.d/80bootstrap
+echo "APT::Get::AllowUnauthenticated true;" >> /etc/apt/apt.conf.d/80bootstrap
 
 # You can now enter the schroot via:
 sudo schroot -c unstable-or1k -d /tmp
