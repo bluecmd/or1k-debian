@@ -606,6 +606,10 @@ sudo mkdir -p -m 0700 "$MNT"/root/.gnupg
 # debootstrap the chroot
 sudo ${proxy:+"http_proxy=${proxy}"} "$DEBOOTSTRAP_COMMAND" --no-check-gpg --arch="$CHROOT_ARCH" $variant_opt $debootstrap_opts "$RELEASE" "$MNT" "${DEBOOTSTRAP_MIRROR:-http://archive.ubuntu.com/ubuntu}"  || true
 
+# Allow outdated releases and unauthenticated packages
+sudo bash -c "echo \"Acquire::Check-Valid-Until false;\" >> $MNT/etc/apt/apt.conf.d/80bootstrap"
+sudo bash -c "echo \"APT::Get::AllowUnauthenticated true;\" >> $MNT/etc/apt/apt.conf.d/80bootstrap"
+
 # Update the package sources
 TEMP_SOURCES=`mktemp -t sources-XXXXXX`
 if [ -z "$TEMPLATE_SOURCES" ]; then
