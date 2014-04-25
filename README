@@ -61,10 +61,6 @@ cp modded-sbuild/qemu-bootstrap /usr/sbin/
 # if this is the case.
 mk-sbuild --arch or1k --debootstrap-include=perl --debootstrap-mirror=http://openrisc.debian.net/ unstable
 
-sudo schroot -c source:unstable-or1k -d /tmp
-echo "Acquire::Check-Valid-Until false;" >> /etc/apt/apt.conf.d/80bootstrap
-echo "APT::Get::AllowUnauthenticated true;" >> /etc/apt/apt.conf.d/80bootstrap
-
 # You can now enter the schroot via:
 sudo schroot -c unstable-or1k -d /tmp
 
