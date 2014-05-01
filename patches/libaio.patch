@@ -1,0 +1,140 @@
+diff -Nur libaio-0.3.109.orig/src/libaio.h libaio-0.3.109/src/libaio.h
+--- libaio-0.3.109.orig/src/libaio.h	2014-05-02 00:46:48.198382204 +0200
++++ libaio-0.3.109/src/libaio.h	2014-05-02 00:48:14.310812597 +0200
+@@ -134,6 +134,10 @@
+ #define PADDEDptr(x, y) x
+ #define PADDEDul(x, y)  unsigned long x
+ #  endif
++#elif defined(__or1k__)
++#define PADDED(x, y)	unsigned y; x
++#define PADDEDptr(x, y)	unsigned y; x
++#define PADDEDul(x, y)	unsigned y; unsigned long x
+ #else
+ #error	endian?
+ #endif
+diff -Nur libaio-0.3.109.orig/src/syscall.h libaio-0.3.109/src/syscall.h
+--- libaio-0.3.109.orig/src/syscall.h	2014-05-02 00:46:48.198382204 +0200
++++ libaio-0.3.109/src/syscall.h	2014-05-02 01:10:54.489724633 +0200
+@@ -38,6 +38,8 @@
+ #include "syscall-sh.h"
+ #elif defined(__aarch64__)
+ #include "syscall-arm64.h"
++#elif defined(__or1k__)
++#include "syscall-or1k.h"
+ #else
+ #error "add syscall-arch.h"
+ #endif
+diff -Nur libaio-0.3.109.orig/src/syscall-or1k.h libaio-0.3.109/src/syscall-or1k.h
+--- libaio-0.3.109.orig/src/syscall-or1k.h	1970-01-01 01:00:00.000000000 +0100
++++ libaio-0.3.109/src/syscall-or1k.h	2014-05-02 01:11:26.325894836 +0200
+@@ -0,0 +1,110 @@
++/*
++ *  Copyright (C) 2014 Christian Svensson
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ */
++
++#define __NR_io_setup                   0
++#define __NR_io_destroy                 1
++#define __NR_io_submit                  2
++#define __NR_io_cancel                  3
++#define __NR_io_getevents               4
++
++#define INTERNAL_SYSCALL(type, sname, nr, args...) \
++({ unsigned long __sys_result;                                          \
++  {                                                                     \
++    register long __sc_ret __asm__ ("r11") = __NR_##sname;              \
++    LOAD_ARGS_##nr (args)                                               \
++    __asm__ __volatile__ ("l.sys     1"                                 \
++                                   : "=r" (__sc_ret) ASM_ARGS_OUT_##nr  \
++                                   : "0" (__sc_ret) ASM_ARGS_IN_##nr    \
++                 : ASM_CLOBBERS_##nr                                    \
++                   "r12", "r13", "r15", "r17", "r19",                   \
++                   "r21", "r23", "r25", "r27", "r29",                   \
++                   "r31", "memory");                                    \
++    __asm__ __volatile__ ("l.nop");                                     \
++    __sys_result = __sc_ret;                                            \
++  }                                                                     \
++  (type) __sys_result; })
++
++#define io_syscall1(type,fname,sname,type1,arg1)                        \
++type fname(type1 arg1) {                                                \
++  return INTERNAL_SYSCALL(type,sname,1,arg1);                           \
++}
++
++#define io_syscall2(type,fname,sname,type1,arg1,type2,arg2)             \
++type fname(type1 arg1, type2 arg2) {                                    \
++  return INTERNAL_SYSCALL(type,sname,2,arg1,arg2);                      \
++}
++
++#define io_syscall3(type,fname,sname,type1,arg1,type2,arg2,type3,arg3)  \
++type fname(type1 arg1, type2 arg2, type3 arg3) {                        \
++  return INTERNAL_SYSCALL(type,sname,3,arg1,arg2,arg3);                 \
++}
++
++#define io_syscall4(type,fname,sname,type1,arg1,type2,arg2,type3,arg3,type4,arg4) \
++type fname(type1 arg1, type2 arg2, type3 arg3, type4 arg4) {            \
++  return INTERNAL_SYSCALL(type,sname,4,arg1,arg2,arg3,arg4);            \
++}
++
++#define io_syscall5(type,fname,sname,type1,arg1,type2,arg2,type3,arg3,type4,arg4,type5,arg5) \
++type fname(type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5) { \
++  return INTERNAL_SYSCALL(type,sname,5,arg1,arg2,arg3,arg4,arg5);       \
++}
++
++/* From here on we have nested macros that generate code for
++ * storing arguments to the syscall
++ * Copied from glibc/uClibc. */
++
++#define LOAD_ARGS_0()
++
++#define ASM_ARGS_OUT_0
++#define ASM_ARGS_IN_0
++#define ASM_CLOBBERS_0  "r3", ASM_CLOBBERS_1
++
++#define LOAD_ARGS_1(a)        \
++    LOAD_ARGS_0 ()        \
++  register long __a __asm__ ("r3") = (long)(a);
++#define ASM_ARGS_OUT_1  ASM_ARGS_OUT_0, "=r" (__a)
++#define ASM_ARGS_IN_1 ASM_ARGS_IN_0, "1" (__a)
++#define ASM_CLOBBERS_1  "r4", ASM_CLOBBERS_2
++
++#define LOAD_ARGS_2(a, b)     \
++    LOAD_ARGS_1 (a)       \
++  register long __b __asm__ ("r4") = (long)(b);
++#define ASM_ARGS_OUT_2  ASM_ARGS_OUT_1, "=r" (__b)
++#define ASM_ARGS_IN_2 ASM_ARGS_IN_1, "2" (__b)
++#define ASM_CLOBBERS_2  "r5", ASM_CLOBBERS_3
++
++#define LOAD_ARGS_3(a, b, c)      \
++    LOAD_ARGS_2 (a, b)        \
++  register long __c __asm__ ("r5") = (long)(c);
++#define ASM_ARGS_OUT_3  ASM_ARGS_OUT_2, "=r" (__c)
++#define ASM_ARGS_IN_3 ASM_ARGS_IN_2, "3" (__c)
++#define ASM_CLOBBERS_3  "r6", ASM_CLOBBERS_4
++
++#define LOAD_ARGS_4(a, b, c, d)     \
++    LOAD_ARGS_3 (a, b, c)       \
++  register long __d __asm__ ("r6") = (long)(d);
++#define ASM_ARGS_OUT_4  ASM_ARGS_OUT_3, "=r" (__d)
++#define ASM_ARGS_IN_4 ASM_ARGS_IN_3, "4" (__d)
++#define ASM_CLOBBERS_4  "r7", ASM_CLOBBERS_5
++
++#define LOAD_ARGS_5(a, b, c, d, e)    \
++    LOAD_ARGS_4 (a, b, c, d)      \
++  register long __e __asm__ ("r7") = (long)(e);
++#define ASM_ARGS_OUT_5  ASM_ARGS_OUT_4, "=r" (__e)
++#define ASM_ARGS_IN_5 ASM_ARGS_IN_4, "5" (__e)
++#define ASM_CLOBBERS_5  "r8", ASM_CLOBBERS_6
++
++#define LOAD_ARGS_6(a, b, c, d, e, f)   \
++    LOAD_ARGS_5 (a, b, c, d, e)     \
++  register long __f __asm__ ("r8") = (long)(f);
++#define ASM_ARGS_OUT_6  ASM_ARGS_OUT_5, "=r" (__f)
++#define ASM_ARGS_IN_6 ASM_ARGS_IN_5, "6" (__f)
++#define ASM_CLOBBERS_6
++
++

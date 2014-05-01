@@ -1,0 +1,28 @@
+diff -Naur cmake-2.8.12.1.orig/Source/kwsys/CPU.h.in cmake-2.8.12.1/Source/kwsys/CPU.h.in
+--- cmake-2.8.12.1.orig/Source/kwsys/CPU.h.in	2014-04-25 14:06:49.533492927 +0200
++++ cmake-2.8.12.1/Source/kwsys/CPU.h.in	2014-04-25 14:09:06.782123766 +0200
+@@ -80,6 +80,10 @@
+ #elif defined(__mips) || defined(__mips__) || defined(__MIPS__)
+ # define @KWSYS_NAMESPACE@_CPU_ENDIAN_ID @KWSYS_NAMESPACE@_CPU_ENDIAN_ID_BIG
+ 
++/* OpenRISC 1000 */
++#elif defined(__or1k__)
++# define @KWSYS_NAMESPACE@_CPU_ENDIAN_ID @KWSYS_NAMESPACE@_CPU_ENDIAN_ID_BIG
++
+ /* RS/6000 */
+ #elif defined(__THW_RS600) || defined(_IBMR2) || defined(_POWER)
+ # define @KWSYS_NAMESPACE@_CPU_ENDIAN_ID @KWSYS_NAMESPACE@_CPU_ENDIAN_ID_BIG
+diff -Naur cmake-2.8.12.1.orig/Utilities/KWIML/ABI.h.in cmake-2.8.12.1/Utilities/KWIML/ABI.h.in
+--- cmake-2.8.12.1.orig/Utilities/KWIML/ABI.h.in	2014-04-25 14:06:49.457492576 +0200
++++ cmake-2.8.12.1/Utilities/KWIML/ABI.h.in	2014-04-25 14:07:58.785811539 +0200
+@@ -398,6 +398,10 @@
+ #elif defined(__mips) || defined(__mips__) || defined(__MIPS__)
+ # define @KWIML@_ABI_ENDIAN_ID @KWIML@_ABI_ENDIAN_ID_BIG
+ 
++/* OpenRISC 1000 */
++#elif defined(__or1k__)
++# define @KWIML@_ABI_ENDIAN_ID @KWIML@_ABI_ENDIAN_ID_BIG
++
+ /* RS/6000 */
+ #elif defined(__THW_RS600) || defined(_IBMR2) || defined(_POWER)
+ # define @KWIML@_ABI_ENDIAN_ID @KWIML@_ABI_ENDIAN_ID_BIG
