@@ -1,12 +1,13 @@
 
 #### Set up the environment
 
-wget http://openrisc.debian.net/qemu-or1k-static -O /usr/bin/qemu-or1k-static
+wget http://openrisc.debian.net/qemu-or1k-static.atomic -O /usr/bin/qemu-or1k-static
 SHA1: e00a6d1b668c454d074057e7b174eb4d2b4f5d9f
 
 sudo apt-get install binfmt-support sbuild
 sudo cp modded-sbuild/qemu-or1k /var/lib/binfmts/
 sudo /etc/init.d/binfmt-support restart
+sudo update-binfmts --enable qemu-or1k
 
 #### Create a new initramfs
 # Debootstrap initramfs
